@@ -31,7 +31,7 @@ def read_basic_header(f, verbose = False):
   file_type_id = basic_header['file type id'] = f.read(8)
   message += file_type_id + '\n'
   if file_type_id != 'NEURALSG':
-    message += 'Not a NSx 2.1 file : %s. Handling not implemented\n' %(file_type_id)
+    message += 'Not a NSx 2.1 file : %s. Handling not implemented\n' % file_type_id
     print message
     return
   
@@ -42,7 +42,7 @@ def read_basic_header(f, verbose = False):
   message += 'Fs = %f (period = %d)\n' %(Fs,period)
   channel_count, = struct.unpack('I', f.read(4))
   basic_header['number of channels'] = channel_count
-  message += '%d channels\n' %(channel_count)
+  message += '%d channels\n' % channel_count
   channel_id = numpy.array(struct.unpack(channel_count*'I', f.read(channel_count*4)))
   basic_header['channel ids'] = channel_id
   message += channel_id.__str__() + '\n'

@@ -174,7 +174,7 @@ def spike_psth(spike_time_ms, t1_ms = -50., t2_ms = 250., bin_ms = 1):
   if N_trials > 0:
     all_spikes_ms = pylab.array([],dtype=float)
     for trial in range(len(spike_time_ms)):
-      if spike_time_ms[trial] == None:
+      if spike_time_ms[trial] is None:
         continue
       idx = pylab.find((spike_time_ms[trial] >= t1_ms) & 
                        (spike_time_ms[trial] <= t2_ms))
@@ -382,7 +382,7 @@ def old_spike_psth(data, t1_ms = -250., t2_ms = 0., bin_ms = 10):
   if N_trials > 0:
     all_spikes_ms = pylab.array([],dtype=float)
     for trial in range(len(spike_time_ms)):
-      if spike_time_ms[trial] == None:
+      if spike_time_ms[trial] is None:
         continue
       idx = pylab.find((spike_time_ms[trial] >= t1_ms) & 
                        (spike_time_ms[trial] <= t2_ms))

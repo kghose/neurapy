@@ -165,7 +165,7 @@ def readLLDataEventDef(f, endian = '', root = False):
 
   theEventDef = {}
   data_dict = {}
-  if root == True:
+  if root:
     #Root event. These are dictionaries and have time stamps
     data_dict['Absolute Time'] = []
     data_dict['Trial Time'] = []
@@ -189,7 +189,7 @@ def readLLDataEventDef(f, endian = '', root = False):
       theEventDef["Children"][childEventDef["dataName"]] = childEventDef
       data_dict[childEventDef["dataName"]] = child_data_dict
   else:
-    if root == True:
+    if root:
       if theEventDef["typeName"] != 'no data':
         data_dict['Data Values'] = []
         #On root nodes where we have data we store it under this key. Again, we
@@ -246,7 +246,7 @@ def readLLHeader(f, endian):
   
   file_header["File Name"] = glob.os.path.basename(f.name)
   file_header["Version"] = format_version
-  logger.debug("Lablib data file version %f" %(format_version))
+  logger.debug("Lablib data file version %f" % format_version)
   
   #This is the python version of John's tricky code in line 974 LLDataFileReader
   N_event_types = readLLNumeric(f, endian + 'l')
@@ -255,7 +255,7 @@ def readLLHeader(f, endian):
     ' endian-ness (%c) is wrong' %(N_event_types, endian))
     N_event_types = 0
   else:
-    logger.debug("%d Events " %(N_event_types))
+    logger.debug("%d Events " % N_event_types)
 
   file_header["Events"] = {}# - eventsDict
   file_header["EventsByCode"] = [None]*N_event_types #Lablib data file indexes events by this
@@ -371,7 +371,7 @@ def recurse_into_data_dict(data_dict, event_data_buffer, event_def_part, type_di
   if event_def_part["typeName"] != "struct":
     #No need to recurse further. Assign and return
     elementBytes = event_def_part["elementBytes"]
-    if elementBytes == 0:
+    if not elementBytes:
       #Carries no data, data_dict expects none
       return
     else:
@@ -391,7 +391,7 @@ def recurse_into_data_dict(data_dict, event_data_buffer, event_def_part, type_di
       #format code. The returned is a tuple. Ain't Python grand?
       try:
         value = list(struct.unpack(fmt, buf))
-        if root == True:
+        if root:
           data_dict['Data Values'][-1].append(value)
         else:
           data_dict[-1].append(value)
@@ -427,7 +427,7 @@ class LLDataFileReader:
                       'char': 's', 
                       'boolean': 'b'}
     #This dictionary converts lablib's data type convention to struct.unpack's
-    if fname != None:
+    if fname is not None:
       self.read(fname, ignore_events, endian)
       
   def read(self, fname = "dj-2008-10-30-01.dat", ignore_events = None, endian = ''):
@@ -461,7 +461,7 @@ class LLDataFileReader:
     append_new_data_dict_trial(data_dict)
     #event_code = self.read_and_append_llevent(f, data_dict)
     event_code = read_llevent_code_from_file(f, self.event_code_fmt)
-    while event_code != self.trialStart_code and event_code != None:
+    while event_code != self.trialStart_code and event_code is not None:
       self.read_and_append_llevent(f, event_code, data_dict)
       event_code = read_llevent_code_from_file(f, self.event_code_fmt)
 
@@ -471,16 +471,16 @@ class LLDataFileReader:
     append_new_data_dict_trial(data_dict_jnk)
     n_trials = 0
     trial_properly_closed = True
-    while event_code != None:
-      while event_code != self.trialStart_code and event_code != None:
+    while event_code is not None:
+      while event_code != self.trialStart_code and event_code is not None:
         #self.read_and_append_llevent(f, event_code, data_dict_jnk)
         skip_llevent_from_file(f, event_code, self.events_by_code, self.endian)
         #We could potentially have junk in between the trials
         event_code = read_llevent_code_from_file(f, self.event_code_fmt)
       
-      if event_code != None:
+      if event_code is not None:
         append_new_data_dict_trial(data_dict) #New trial starts
-      while event_code != self.trialEnd_code and event_code != None:
+      while event_code != self.trialEnd_code and event_code is not None:
         trial_properly_closed = False
         if event_code not in self.ignore_event_codes:
           self.read_and_append_llevent(f, event_code, data_dict)
@@ -512,7 +512,7 @@ class LLDataFileReader:
     #Figure out what we have to ignore
     ev = file_header["Events"]
     self.ignore_event_codes = []
-    if self.ignore_events != None:
+    if self.ignore_events is not None:
       for n in xrange(len(self.ignore_events)):
         if ev.has_key(self.ignore_events[n]):
           self.ignore_event_codes.append(ev[self.ignore_events[n]]['EventCode'])
@@ -654,7 +654,7 @@ class LLDataFileReader:
     if thisEventPartDef["typeName"] != "struct":
       #No need to recurse further. Assign and return
       elementBytes = thisEventPartDef["elementBytes"]
-      if elementBytes == 0:
+      if not elementBytes:
         #Carries no data
         value = None
       else:
@@ -725,7 +725,7 @@ def pickle(fname = '../Data/dj-2008-11-10-01.dat',
   R - the data structure. Pickled file is saved automatically, substituting the
       extension .dat with .pkl"""
   
-  if ignore_eye_data == True:
+  if ignore_eye_data:
     ignore_events = ['eyeXData','eyeYData','eyePData']
   else:
     ignore_events = None

@@ -99,15 +99,16 @@ def read_extended_header(f, basic_header):
   n_extended_headers = basic_header['number of extended headers']
      
   # Extended header
-  extended_header = {}
-  extended_header['comments'] = []
-  extended_header['neural event waveform'] = {} #NEUEVWAV
-  extended_header['neural event label'] = {} #NEUEVLBL
-  extended_header['neural event filter'] = {} #NEUEVFLT
-  extended_header['digital label'] = {} #DIGLABEL
-  extended_header['NSAS expt information channels'] = {} #NSASEXEV
-  
-  extended_header['other packets'] = []
+  extended_header = {
+    'comments': [],
+    'neural event waveform': {}, #NEUEVWAV
+    'neural event label': {}, #NEUEVLBL
+    'neural event filter': {}, #NEUEVFLT
+    'digital label': {}, #DIGLABEL
+    'NSAS expt information channels': {}, #NSASEXEV
+    'other packets': []
+  }
+
   for nhdr in range(n_extended_headers):
     packet_id = f.read(8)
     payload = f.read(24)
@@ -201,7 +202,7 @@ def skim_packets(f, basic_header, extended_header, N = 1000, packet_id = None):
         rewind(f, basic_header)
     else:
       pi, = struct.unpack('H', header_buffer[4:])
-      if pi == packet_id or packet_id == None:
+      if pi == packet_id or packet_id is None:
         timestamp, = struct.unpack('I', header_buffer[0:4])
         time_stamps[counter] = timestamp * Ts
         packet_ids[counter] = pi
@@ -235,7 +236,7 @@ def read_next_marker(f, basic_header, extended_header):
         rewind(f, basic_header)
     else:
       pi, = struct.unpack('H', header_buffer[4:])
-      if pi == 0:
+      if not pi:
         timestamp, = struct.unpack('I', header_buffer[0:4])
         t = timestamp/Fs
         buffer = f.read(bytes_in_data_packets - 6)
@@ -327,7 +328,7 @@ def fragment(f, basic_header, extended_header,
         rewind(f, basic_header)
     else:
       pi, = struct.unpack('H', header_buffer[4:])#packet id
-      if pi == 0:
+      if not pi:
         fnonneural.write(header_buffer)
         fnonneural.write(f.read(bytes_in_data_packets - 6))
         nnev_counter += 1
@@ -347,7 +348,7 @@ def fragment(f, basic_header, extended_header,
         f.seek(bytes_in_data_packets - 6, 1) #skip appropriate number of bytes
   
     packet_counter -=1
-    if packet_counter == 0:
+    if not packet_counter:
       percent_packets_read += 1
       #print 'dump_spike_data: %d%% packets read' %(percent_packets_read)
       packet_counter = one_percent_packets

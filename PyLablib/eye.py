@@ -49,11 +49,11 @@ def eye_calibrations(R):
   n_trials = len(tX)
   M = pylab.zeros((n_trials,2,2), dtype=float)
   C = pylab.zeros((n_trials,2), dtype=float)
-  """John uses col,row when refering to the calibration matrix. So his 
+  '''John uses col,row when refering to the calibration matrix. So his
   notation for the matrix is  
      m11, m21.
      m12  m22
-  Hence th transposition in the code below."""
+  Hence th transposition in the code below.'''
   for tr in range(n_trials):
     M[tr,0,0] = m11[tr][0][0]
     M[tr,0,1] = m21[tr][0][0]
@@ -106,7 +106,7 @@ def fix_window(R):
 
 def raw_eye_xy(R, old_format = None):
   """Return the raw x,y data points without calibration for diagnostic purposes."""
-  if dat_format == None:
+  if dat_format is None:
     dvx = R.data['Trials']['eyeXData']['Data Values']  
     dvy = R.data['Trials']['eyeYData']['Data Values']
   elif dat_format == 'fixate':
@@ -167,7 +167,7 @@ def eye_xy(R, M, C, old_format = False):
     all_x - list of arrays of the eyeposition for each trial
     all_y - list of arrays of the eyeposition for each trial
   """
-  if old_format == False:
+  if not old_format:
     dvx = R.data['Trials']['eyeXData']['Data Values']  
     dvy = R.data['Trials']['eyeYData']['Data Values']
   else:
