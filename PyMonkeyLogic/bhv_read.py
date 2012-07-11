@@ -6,16 +6,32 @@ Kaushik Ghose (kaushik.ghose@gmail.com)
 
 """
 from struct import unpack as upk, calcsize as csize
-import pylab, logging
+import pylab, logging, argparse
 logger = logging.getLogger(__name__)
 #logger.addHandler(logging.NullHandler())
 
 def unpack(fmt,f):
+  """A utiltiy function that reads the appropriate number of bytes for the
+  format string passed and, if any of the elements are string, strips them of
+  whitespace
+  Inputs:
+    fmt - format string for struct.unpack
+    f - file handle
+  Returns:
+    tuple of read variables."""
   ans = upk(fmt, f.read(csize(fmt)))
   return tuple(an.strip() if isinstance(an, str) else an for an in ans)
 
 def read_header(bhv, fin):
-  """Returns filled out bhv and True if everything went OK, false otherwise."""
+  """Reads the header of a .bhv file. Call this first.
+  Inputs:
+    bhv - a dictionary (can be empty)
+    fin - file handle
+  Returns:
+    True if no errors
+    False otherwise
+    bhv is filled in implicitly
+  """
   mn, fh, fv = unpack('=I64sd', fin)
   bhv['MagicNumber'] = mn
   bhv['FileHeader'] = fh
@@ -70,12 +86,12 @@ def read_header(bhv, fin):
   bhv['AnalogInputDuplication'] = aid
 
 
-  escm, tmatrix, = unpack('32sB', fin)
+  escm, tmatrix = unpack('32sB', fin)
   et = {}
   if tmatrix:
     et['ndims in'], et['ndims out'], et['fwdfcn'], et['invfcn'] = unpack('=HH64s64s', fin)
     tsize, = unpack('H', fin)
-    tsqrt = tsize ** 0.5
+    tsqrt = int(tsize ** 0.5)
     et['tdata T'] = [[unpack('d', fin)[0] for n in xrange(tsqrt)] for m in xrange(tsqrt)]
     et['tdate Tinv'] = [[unpack('d', fin)[0] for n in xrange(tsqrt)] for m in xrange(tsqrt)]
   bhv['EyeSignalCalibrationMethod'] = escm
@@ -132,6 +148,16 @@ def read_header(bhv, fin):
   return True
 
 def read_trials(bhv, fin):
+  """Reads the meat of the .bhv file: the trials. Call this after reading the
+  header.
+  Inputs:
+    bhv - a dictionary filled out by read_header
+    fin - file handle positioned at end of header
+  Returns:
+    True if no errors
+    False otherwise
+    bhv is filled in implicitly
+  """
   bhv['Padding'] = unpack('1024B', fin)
   bhv['NumTrials'], = unpack('H', fin)
   nTrials = bhv['NumTrials']
@@ -256,6 +282,16 @@ def read_trials(bhv, fin):
   return True
 
 def read_footer(bhv, fin):
+  """Reads the tail of the .bhv file: the summary. Call this after reading the
+  trials.
+  Inputs:
+    bhv - a dictionary filled out by read_header
+    fin - file handle positioned at end of all the trials
+  Returns:
+    True if no errors
+    False otherwise
+    bhv is filled in implicitly
+  """
   nbcu, = unpack('H', fin)
   bhv['CodeNumbersUsed'] = unpack('H'*nbcu, fin)
   bhv['CodeNamesUsed'] = unpack('64s'*nbcu, fin)
@@ -274,6 +310,13 @@ def read_footer(bhv, fin):
   return True
 
 def read_bhv(fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'):
+  """Reads a behavioral file. TODO: partial recovery of files.
+  Input:
+    fname - name of the file
+  Output:
+    bhv - dictionary with the behavioral data
+  """
+
   logger.info('Opening ' + fname)
   with open(fname, "rb") as fin:
     bhv = {}
@@ -288,6 +331,9 @@ def read_bhv(fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'):
 if __name__ == "__main__":
   logger.setLevel(logging.DEBUG)
   logger.addHandler(logging.StreamHandler())
-  fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'
 
-  bhv = read_bhv(fname = fname)
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-f','--file')
+  args = parser.parse_args()
+  #fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'
+  bhv = read_bhv(fname = args.file)
