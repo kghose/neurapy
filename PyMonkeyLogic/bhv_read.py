@@ -8,7 +8,6 @@ Kaushik Ghose (kaushik.ghose@gmail.com)
 from struct import unpack as upk, calcsize as csize
 import pylab, logging, argparse
 logger = logging.getLogger(__name__)
-#logger.addHandler(logging.NullHandler())
 
 def unpack(fmt,f):
   """A utiltiy function that reads the appropriate number of bytes for the
