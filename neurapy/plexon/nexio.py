@@ -78,13 +78,21 @@ def cont_var(f, dt, v):
   fmt = str(v['npW']) + 'h'
   waveform = pylab.array(rd(f,fmt)) * v['AD2mV']
 
+  waveforms = []
+  st = indexes[0]
+  for n in xrange(1,indexes.size):
+    nd = indexes[n]
+    waveforms.append(pylab.array(waveform[st:nd]))
+    st = indexes[n]
+  waveforms.append(pylab.array(waveform[st:]))
+
   this_continuous = {
     'name': v['name'],
     'version': v['version'],
     'timestamps': time_stamps,
     'indexes': indexes,
     'sampling freq': v['wSampF'],
-    'waveform': waveform
+    'waveform': waveforms
   }
   dt['Continuous'].append(this_continuous)
   return dt
