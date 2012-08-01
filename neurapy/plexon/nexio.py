@@ -51,12 +51,13 @@ def a_waveform(f, dt, v):
   time_stamps = pylab.array(rd(f,fmt))/dt['Header']['Freq']
 
   fmt = str(v['N']*v['npW']) + 'h'
-  waveforms = pylab.array(rd(f,fmt)).reshape((v['N'], v['npW']))
+  waveforms = pylab.array(rd(f,fmt)).reshape((v['N'], v['npW'])) * v['AD2mV']
 
   this_waveform = {
     'name': v['name'],
     'version': v['version'],
     'timestamps': time_stamps,
+    'sampling freq': v['wSampF'],
     'waveforms': waveforms
   }
   dt['Waveform'].append(this_waveform)
