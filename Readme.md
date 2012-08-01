@@ -1,4 +1,6 @@
-NeuraPy is a collection of python modules useful for analyzing data obtained in neurophysiological experiments.
+NeuraPy
+-------
+is a collection of python modules useful for analyzing data obtained in neurophysiological experiments.
 
 * lablib - a module for loading [lablib][lablib] data files
 * monkeylogic - a module for loading data files saved by the [MonkeyLogic][ml] program
