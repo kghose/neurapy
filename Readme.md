@@ -15,7 +15,7 @@ is a collection of python modules useful for analyzing data obtained in neurophy
 Installation
 ------------
 1. Grab the latest code from the zip package or grab it from github by doing `git git@github.com:kghose/neurapy.git`
-2. Add the `neurapy` directory to your modules path (e.g by adding a line to one of your .pth files)
+2. Add the directory containing `neurapy` to your modules path (e.g by adding a line to one of your .pth files)
 3. Some of the modules make use of the [matplotlib][mat] package, which should be installed
 
 [mat]: http://matplotlib.sourceforge.net/
@@ -27,4 +27,5 @@ Typically, from your script, you will import one of the sub-modules e.g
 
 `from neurapy.lablib import lablib as ll`
 
-For module specific instructions look at the readme files in each module's directory
+For module specific instructions look at the readme files in each module's directory and
+look at the documentation in the source
