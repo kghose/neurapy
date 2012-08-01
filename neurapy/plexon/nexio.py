@@ -41,11 +41,25 @@ def an_event(f, dt, v):
   return dt
 
 def an_interval(f, dt, vars):
-  """Read a neuron from the stream."""
+  """Read an interval from the stream."""
+  logger.debug('An interval')
   return dt
 
-def a_waveform(f, dt, vars):
-  """Read a neuron from the stream."""
+def a_waveform(f, dt, v):
+  """Read a waveform set from the stream."""
+  fmt = str(v['N']) + 'i'
+  time_stamps = pylab.array(rd(f,fmt))/dt['Header']['Freq']
+
+  fmt = str(v['N']*v['npW']) + 'h'
+  waveforms = pylab.array(rd(f,fmt)).reshape((v['N'], v['npW']))
+
+  this_waveform = {
+    'name': v['name'],
+    'version': v['version'],
+    'timestamps': time_stamps,
+    'waveforms': waveforms
+  }
+  dt['Waveform'].append(this_waveform)
   return dt
 
 def a_pop_vector(f, dt, vars):
@@ -54,6 +68,7 @@ def a_pop_vector(f, dt, vars):
 
 def cont_var(f, dt, vars):
   """Read a neuron from the stream."""
+  logger.debug('A continuous variable')
   return dt
 
 def a_marker(f, dt, v):
@@ -100,7 +115,7 @@ def read_nex(fname = '../../Data/SortedNex/Space vs Object Learning-Flippe-07-22
   if ftid != 'NEX1':
     logger.error('Not a .nex file : ' + fname)
   else:
-    logger.debug('Good')
+    logger.debug('Reading ' + fname)
 
   fmt = '=i 256s d i i i 260s' # '=' means don't align
   h['Version'], h['Comment'], h['Freq'], h['t begin'], h['t end'], nvar, dummy,  = rd(f,fmt)
