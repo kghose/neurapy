@@ -1,5 +1,7 @@
 """Demo/test script, puts nev through its paces"""
 import logging
+from neurapy.PyNev import nev
+
 LOG_FILENAME = 'testnev.log'
 logging.basicConfig(filename=LOG_FILENAME,
                     format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -8,8 +10,6 @@ logger = logging.getLogger('TestNev')
 
 import pylab
 from optparse import OptionParser #For command line arguments
-
-import nev
 
 parser = OptionParser()
 parser.add_option("-f", "--nevfile",

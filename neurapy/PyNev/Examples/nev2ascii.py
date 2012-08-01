@@ -1,16 +1,15 @@
 """Read in nev file from cerebus and spit out an ASCII file that can be read by
 nev2lkit"""
 import logging
+from neurapy.PyNev import nev
+
 LOG_FILENAME = 'nev2ascii.log'
 logging.basicConfig(filename=LOG_FILENAME,
                     format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                     level=logging.DEBUG)
 logger = logging.getLogger('Nev2ASCII')
 
-import pylab
 from optparse import OptionParser #For command line arguments
-
-import nev
 
 def write_header(fout, basic_header, extended_header, channel, total_channels):
   """Given a (ascii) file handle and the basic and extended headers, write the

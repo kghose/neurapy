@@ -1,8 +1,8 @@
 import matplotlib
+
 matplotlib.use("Agg")
 
 import pylab
-import lablib
 
 def eye_sample_insert_interval(R):
   tt = R.data['Trials']['eyeXData']['Trial Time']  
