@@ -60,7 +60,7 @@ def a_waveform(f, dt, v):
     'sampling freq': v['wSampF'],
     'waveforms': waveforms
   }
-  dt['Waveform'].append(this_waveform)
+  dt['Waveforms'].append(this_waveform)
   return dt
 
 def a_pop_vector(f, dt, vars):
@@ -129,9 +129,9 @@ def read_nex(fname = '../../Data/SortedNex/Space vs Object Learning-Flippe-07-22
     'Neurons': [],
     'Events': [],
     'Intervals': [],
-    'Waveform': [],
-    'Population vector': [],
-    'Continuous variable': [],
+    'Waveforms': [],
+    'Population vectors': [],
+    'Continuous variables': [],
     'Markers': []
   }
 
