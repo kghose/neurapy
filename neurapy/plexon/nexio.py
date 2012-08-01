@@ -1,6 +1,6 @@
 """Module contains methods to read .nex files produced from the offline sorter.
-Based on reverse engineering .nex file structure from http://www.neuroexplorer.com/code.html
-
+Based on documents from http://www.neuroexplorer.com/code.html. The text file
+HowToReadAndWriteNexFilesInCPlusPlus.txt is especially useful
 """
 
 import struct, pylab, logging
@@ -98,20 +98,20 @@ def a_marker(f, dt, v):
     'version': v['version'],
     'timestamps': time_stamps
   }
-  tmv = this_marker['channel'] = [] #Best name I could come up with
-  fmt = str(v['markerLen']) + 's'
+  # Each time stamp can have several fields each with an associated value
+  # The plexon system only dumps one field whose value is the strobed word stored as a string
+
   for n in range(v['Nmarkers']):
     mk_name = f.read(64).strip('\x00')
-    val = [''] * v['N']
-    for m in range(v['N']):
-      val[m] = f.read(v['markerLen']).strip('\x00')
-    tmv.append({'name': mk_name, 'string': val})
+    if mk_name in ['name', 'version', 'timestamps']:#Try to avoid a name clash (it is possible)
+      mk_name = 'my' + mk_name
+    val = [f.read(v['markerLen']).strip('\x00') for m in range(v['N'])]
+    if v['name'] == 'Strobed':
+      logger.debug('Marker name is Strobed, treating it as Plexon strobed word and converting it to a numerical array')
+      val = pylab.array([int(va) for va in val])
+    this_marker[mk_name] = val
 
   dt['Markers'].append(this_marker)
-  #It's kind of annoying, but this is a direct copy of the matlab code, so presumably this is general enough to handle
-  #all .nex files. You have to access the event codes by doing
-  #dt['Markers'][0]['channel'][0]['string']
-
   return dt
 
 def read_nex(fname = '../../Data/SortedNex/Space vs Object Learning-Flippe-07-22-2009-KG.nex',
