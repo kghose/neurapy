@@ -67,9 +67,26 @@ def a_pop_vector(f, dt, vars):
   """Read a neuron from the stream."""
   return dt
 
-def cont_var(f, dt, vars):
-  """Read a neuron from the stream."""
-  logger.debug('A continuous variable')
+def cont_var(f, dt, v):
+  """Read a continuous variable from the stream."""
+  fmt = str(v['N']) + 'i'
+  time_stamps = pylab.array(rd(f,fmt))/dt['Header']['Freq']
+
+  fmt = str(v['N']) + 'i'
+  indexes = pylab.array(rd(f,fmt))
+
+  fmt = str(v['npW']) + 'h'
+  waveform = pylab.array(rd(f,fmt)) * v['AD2mV']
+
+  this_continuous = {
+    'name': v['name'],
+    'version': v['version'],
+    'timestamps': time_stamps,
+    'indexes': indexes,
+    'sampling freq': v['wSampF'],
+    'waveform': waveform
+  }
+  dt['Continuous'].append(this_continuous)
   return dt
 
 def a_marker(f, dt, v):
@@ -97,7 +114,31 @@ def a_marker(f, dt, v):
 
   return dt
 
-def read_nex(fname = '../../Data/SortedNex/Space vs Object Learning-Flippe-07-22-2009-KG.nex'):
+def read_nex(fname = '../../Data/SortedNex/Space vs Object Learning-Flippe-07-22-2009-KG.nex',
+             load = ['neurons', 'events', 'intervals', 'waveforms', 'popvectors', 'continuous', 'markers']):
+  """Reads nex file into a standard python dictionary.
+  fname - name of nex file
+  load - list of strings that instruct us what to load (skipping over others). load is a list that includes
+         one or more of the following:
+         'neurons' - neuron time stamps,
+         'events' - events strobed in,
+         'intervals' - any defined intervals,
+         'waveforms' - waveforms of the units,
+         'popvectors' - don't know what this is
+         'continuous' - any continuous channels recorded
+         'markers' - markers
+  """
+  data_type = {
+    'neurons': 0,
+    'events': 1,
+    'intervals': 2,
+    'waveforms': 3,
+    'popvectors': 4,
+    'continuous': 5,
+    'markers': 6
+  }
+  types_to_load = [data_type[dt] for dt in load]
+
   #Python switch statement made as a dictionary. Will lead to keyValueError if we get something out of scope
   switch = {
     0: a_neuron,
@@ -131,7 +172,7 @@ def read_nex(fname = '../../Data/SortedNex/Space vs Object Learning-Flippe-07-22
     'Intervals': [],
     'Waveforms': [],
     'Population vectors': [],
-    'Continuous variables': [],
+    'Continuous': [],
     'Markers': []
   }
 
@@ -142,10 +183,11 @@ def read_nex(fname = '../../Data/SortedNex/Space vs Object Learning-Flippe-07-22
     v['xPos'], v['yPos'], v['wSampF'], v['AD2mV'], v['npW'], v['Nmarkers'], v['markerLen'], v['mVoffset'], dummy = rd(f,fmt)
     v['name'] = name.strip('\x00')
 
-    this_place = f.tell()
-    f.seek(offset)
-    dt = switch[type](f, dt, v)
-    f.seek(this_place)
+    if type in types_to_load:
+      this_place = f.tell()
+      f.seek(offset)
+      dt = switch[type](f, dt, v)
+      f.seek(this_place)
 
   f.close()
   return dt
