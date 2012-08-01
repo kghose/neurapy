@@ -1,7 +1,7 @@
 """Read in nev file from cerebus and spit out an ASCII file that can be read by
 nev2lkit"""
 import logging
-from neurapy.PyNev import nev
+from neurapy.cerebus import nev
 
 LOG_FILENAME = 'nev2ascii.log'
 logging.basicConfig(filename=LOG_FILENAME,

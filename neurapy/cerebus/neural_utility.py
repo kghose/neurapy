@@ -4,7 +4,7 @@ and scipy and some other more common python modules."""
 import pylab
 import scipy.signal as ss #For filtering
 import datetime #for dates for the impedance file
-from neurapy.PyNev import nsx, nev
+from neurapy.cerebus import nsx, nev
 
 #filfilt implementation from http://www.scipy.org/Cookbook/FiltFilt
 def lfilter_zi(b,a):

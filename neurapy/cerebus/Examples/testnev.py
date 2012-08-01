@@ -1,6 +1,6 @@
 """Demo/test script, puts nev through its paces"""
 import logging
-from neurapy.PyNev import nev
+from neurapy.cerebus import nev
 
 LOG_FILENAME = 'testnev.log'
 logging.basicConfig(filename=LOG_FILENAME,
