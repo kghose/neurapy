@@ -195,21 +195,21 @@ def read_trials(bhv, fin):
     codet[trl] = unpack('H'*ncodes[trl], fin)
 
     nxeyep, = unpack('I', fin)
-    xeye[trl] = unpack('f'*nxeyep, fin)
+    xeye[trl] = pylab.array(unpack('f'*nxeyep, fin), dtype=pylab.float16)
     nyeyep, = unpack('I', fin)
-    yeye[trl] = unpack('f'*nyeyep, fin)
+    yeye[trl] = pylab.array(unpack('f'*nyeyep, fin), dtype=pylab.float16)
 
     nxjoyp, = unpack('I', fin)
-    xjoy[trl] = unpack('f'*nxjoyp, fin)
+    xjoy[trl] = pylab.array(unpack('f'*nxjoyp, fin), dtype=pylab.float16)
     nyjoyp, = unpack('I', fin)
-    yjoy[trl] = unpack('f'*nyjoyp, fin)
+    yjoy[trl] = pylab.array(unpack('f'*nyjoyp, fin), dtype=pylab.float16)
 
     for n in xrange(9):
       npts, = unpack('I', fin)
-      other_analog_data[trl][n] = unpack('f'*npts, fin)
+      other_analog_data[trl][n] = pylab.array(unpack('f'*npts, fin), dtype=pylab.float16)
 
     npts, = unpack('I', fin)
-    photodiode[trl] = unpack('f'*npts, fin)
+    photodiode[trl] = pylab.array(unpack('f'*npts, fin), dtype=pylab.float16)
     rt[trl], = unpack('h', fin)
 
     numstat, = unpack('I', fin)
