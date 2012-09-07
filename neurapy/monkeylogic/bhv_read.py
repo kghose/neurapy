@@ -291,22 +291,28 @@ def read_footer(bhv, fin):
     False otherwise
     bhv is filled in implicitly
   """
-  nbcu, = unpack('H', fin)
-  bhv['CodeNumbersUsed'] = unpack('H'*nbcu, fin)
-  bhv['CodeNamesUsed'] = unpack('64s'*nbcu, fin)
-  numf, = unpack('H', fin)
-  vc = {}
-  for n in xrange(numf):
-    fn, cnt = unpack('64sH', fin)
-    vc[fn] = {
-      'Trial': unpack('H'*cnt, fin),
-      'Value': unpack('d'*cnt, fin)
-    }
-  bhv['VariableChanges'] = vc
-  bhv['FinishTime'] = unpack('32s', fin)
+  try:
+    nbcu, = unpack('H', fin)
+    bhv['CodeNumbersUsed'] = unpack('H'*nbcu, fin)
+    bhv['CodeNamesUsed'] = unpack('64s'*nbcu, fin)
+    numf, = unpack('H', fin)
+    vc = {}
+    for n in xrange(numf):
+      fn, cnt = unpack('64sH', fin)
+      vc[fn] = {
+        'Trial': unpack('H'*cnt, fin),
+        'Value': unpack('d'*cnt, fin)
+      }
+    bhv['VariableChanges'] = vc
+    bhv['FinishTime'] = unpack('32s', fin)
 
-  logger.info('Finished reading file (' + str(fin.tell()) + ' bytes)')
-  return True
+    logger.info('Finished reading file (' + str(fin.tell()) + ' bytes)')
+    return True
+  except:
+    logger.error('Error reading file footer')
+    return False
+
+
 
 def read_bhv(fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'):
   """Reads a behavioral file. TODO: partial recovery of files.
@@ -319,10 +325,19 @@ def read_bhv(fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'):
   logger.info('Opening ' + fname)
   with open(fname, "rb") as fin:
     bhv = {}
-    if read_header(bhv, fin):
-      if read_trials(bhv, fin):
-        if read_footer(bhv, fin):
-          return bhv
+    try:
+      read_header(bhv, fin)
+      try:
+        read_trials(bhv, fin)
+        try:
+          read_footer(bhv, fin)
+        except:
+          logger.error('Error reading file footer. File may have terminated abruptly')
+        return bhv
+      except:
+        logger.error('Error reading file body. Aborting')
+    except:
+      logger.error('Error reading file header. Aborting')
 
   logger.error('Some issue with loading file')
   return None
