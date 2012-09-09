@@ -14,7 +14,7 @@ is a collection of python modules useful for analyzing data obtained in neurophy
 
 Installation
 ------------
-1. Grab the latest code from the zip package or grab it from github by doing `git git@github.com:kghose/neurapy.git`
+1. Grab the latest code from the zip package or grab it from github by doing `git git://github.com/kghose/neurapy.git`
 2. Add the directory containing `neurapy` to your modules path (e.g by adding a line to one of your .pth files)
 3. Some of the modules make use of the [matplotlib][mat] package, which should be installed
 
