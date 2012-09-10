@@ -7,7 +7,7 @@ Right now, the movie does not handle TTL objects and movies
 """
 import matplotlib
 matplotlib.use("Agg") #Don't need to see the frames
-import pylab, bhv_read as brd, logging, tempfile, re
+import pylab, bhv_read as brd, logging, tempfile, re, argparse
 logger = logging.getLogger(__name__)
 
 def parse_task_object_data(bhv):
@@ -22,7 +22,7 @@ def parse_task_object_data(bhv):
   for n in xrange(len(to)):
     oname = obj_r.findall(to[n][0])[0]
     if oname == 'fix':
-      odata = pylab.ones((4,4,3))
+      odata = pylab.ones((7,7,3),dtype=float)#Arbitrary square for FP
       args = args_r.findall(to[n][0])
       p = [float(p) for p in args]
     elif oname =='pic':
@@ -100,7 +100,7 @@ def prepare_trial(bhv, trl, options):
   frame_data[:,0,2] = eyey_i
 
   for fr in xrange(fcount):
-    if tframe[fr] >= osr_time[cur_ev]:
+    while tframe[fr] >= osr_time[cur_ev]:
       for n,ojst in enumerate(osr_status[cur_ev]):
         if ojst == 0:
           frame_data[fr:,n+1,0] = 0 #Switch it off
@@ -113,6 +113,9 @@ def prepare_trial(bhv, trl, options):
       cur_ev += 1
       if cur_ev >= len(osr_time):
         break
+
+    if cur_ev >= len(osr_time):
+      break
 
   movie_data = {
     'screen color': scr_col,
@@ -130,31 +133,38 @@ def prepare_trial(bhv, trl, options):
 
 def single_frame(movie_data, frame_no):
   """Do the dirty work of converting the movie data into a plot of a single frame."""
+  t_ms = movie_data['tframe'][frame_no] - movie_data['tstart']
+  scr_col = movie_data['screen color']
   sx, sy = movie_data['screen size']
   objects = movie_data['objects']
   osize = movie_data['object size']
-  pylab.figure()
+
   pylab.plot([-sx/2, sx/2, sx/2, -sx/2, -sx/2],[sy/2, sy/2, -sy/2, -sy/2, sy/2],'k')
   ax = pylab.gca()
   fd = movie_data['frame data'][frame_no, :, :]
-  pylab.plot(fd[0,1], fd[0,2], 'wo')  #Plot eye position
   for n in xrange(fd.shape[0]-1,0,-1): #Need to go backwards to ensure proper z-stack for plotting. Objects earlier in the conditions file obscure later objects
     if fd[n,0]:#Show this image
       cx = fd[n,1]
       cy = fd[n,2]
       ext = [cx - osize[n-1,0]/2, cx + osize[n-1,0]/2,
-             cy + osize[n-1,1]/2, cy - osize[n-1,1]/2]#l,r,b,t
-      pylab.imshow(objects[n], extent=ext)
+             -cy + osize[n-1,1]/2, -cy - osize[n-1,1]/2]#l,r,b,t
+      pylab.imshow(objects[n], extent=ext, interpolation='none')
 
-  pylab.setp(ax, 'xticks', [], 'yticks', [])
+  pylab.plot(fd[0,1], -fd[0,2], 'w.')  #Plot eye position
+  pylab.text(-sx/2,sy/2, t_ms)
+  pylab.setp(ax, 'xticks', [], 'yticks', [], 'axis_bgcolor', scr_col, 'ylim',[sy/2, -sy/2])#Ensures reversed y-axis uniformly (otherwise images will flip y-axis w/o warning)
   pylab.axis('scaled')
 
 
 def play(movie_data):
   """Cycle through all the frames, save them as needed."""
 
-
-
+  for fr in xrange(movie_data['tframe'].size):
+    pylab.figure()
+    single_frame(movie_data, frame_no=fr)
+    fname = 'frame{:05d}.png'.format(fr)
+    pylab.savefig(fname)
+    pylab.close()
 
 if __name__ == "__main__":
   logger.setLevel(logging.DEBUG)
@@ -162,7 +172,8 @@ if __name__ == "__main__":
 
   parser = argparse.ArgumentParser()
   parser.add_argument('-f','--file', help=".bhv file full path")
-  parser.add_argument('-t', '--trial', help="Trial number", default=0)
+  parser.add_argument('-t', '--trial', help="Trial number", default=0, type=int)
+  parser.add_argument('-s', '--tstep', help="tstep (ms)", default=10, type=int)
   parser.add_argument('-v','--verbose', action="store_true", default=False, help="Print logger messages")
   args = parser.parse_args()
 
@@ -174,9 +185,8 @@ if __name__ == "__main__":
 
 
   #fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'
-  bhv = read_bhv(fname = args.file)
-  options = {'tstep': 10}
+  bhv = brd.read_bhv(fname = args.file)
+  options = {'tstep': args.tstep}
   movie_data = prepare_trial(bhv, args.trial, options)
-  single_frame(movie_data, frame_no=0)
-
+  play(movie_data)
 
