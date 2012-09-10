@@ -22,7 +22,7 @@ def parse_task_object_data(bhv):
   for n in xrange(len(to)):
     oname = obj_r.findall(to[n][0])[0]
     if oname == 'fix':
-      odata = pylab.ones((7,7,3),dtype=float)#Arbitrary square for FP
+      odata = pylab.ones((5,5,3),dtype=float)#Arbitrary square for FP
       args = args_r.findall(to[n][0])
       p = [float(p) for p in args]
     elif oname =='pic':
@@ -36,7 +36,6 @@ def parse_task_object_data(bhv):
     else:
       odata = pylab.zeros((4,4,3))
       logger.error('Could not find object')
-
 
     objects.append(odata)
     initial_pos.append(p)
@@ -148,7 +147,7 @@ def single_frame(movie_data, frame_no):
       cy = fd[n,2]
       ext = [cx - osize[n-1,0]/2, cx + osize[n-1,0]/2,
              -cy + osize[n-1,1]/2, -cy - osize[n-1,1]/2]#l,r,b,t
-      pylab.imshow(objects[n], extent=ext, interpolation='none')
+      pylab.imshow(objects[n-1], extent=ext, interpolation='none')
 
   pylab.plot(fd[0,1], -fd[0,2], 'w.')  #Plot eye position
   pylab.text(-sx/2,sy/2, t_ms)
