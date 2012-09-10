@@ -193,7 +193,7 @@ if __name__ == "__main__":
   bhv = brd.read_bhv(fname = args.file)
   options = {
     'tstep': args.tstep,
-    'movie name': os.path.basename(args.file) + '_t{:04d}.avi'.format(args.trial)
+    'movie name': os.path.basename(args.file)[:-4] + '_t{:04d}.avi'.format(args.trial)
   }
   movie_data = prepare_trial(bhv, args.trial - 1, options)
   logger.debug('{:d} frames {:0.2f} ms'.format(movie_data['tframe'].size, movie_data['tframe'][-1]))
