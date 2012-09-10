@@ -7,7 +7,7 @@ Right now, the movie does not handle TTL objects and movies
 """
 import matplotlib
 matplotlib.use("Agg") #Don't need to see the frames
-import pylab, bhv_read as brd, logging, tempfile, re, argparse
+import pylab, bhv_read as brd, logging, tempfile, re, argparse, os, subprocess
 logger = logging.getLogger(__name__)
 
 def parse_task_object_data(bhv):
@@ -156,15 +156,21 @@ def single_frame(movie_data, frame_no):
   pylab.setp(ax, 'xticks', [], 'yticks', [], 'axis_bgcolor', scr_col, 'ylim',[sy/2, -sy/2], 'xlim', [-sx/2, sx/2])#Ensures reversed y-axis uniformly (otherwise images will flip y-axis w/o warning)
 
 
-def play(movie_data):
+def play(movie_data, options):
   """Cycle through all the frames, save them as needed."""
+  tdir = tempfile.mkdtemp(suffix='_ml_momkr') #Temporary directory for frames
+  logger.debug('Frames are being placed in ' + tdir)
 
   for fr in xrange(movie_data['tframe'].size):
     pylab.figure()
     single_frame(movie_data, frame_no=fr)
-    fname = 'frame{:05d}.png'.format(fr)
+    fname = tdir + '/frame{:05d}.png'.format(fr)
     pylab.savefig(fname)
     pylab.close()
+
+  ffmpeg_command = ['ffmpeg','-i', tdir + '/frame%05d.png', '-vcodec', 'libx264', '-x264opts', 'keyint=123:min-keyint=20', '-an', '-y', '-f', 'avi', options['movie name']]
+  logger.debug(ffmpeg_command)
+  logger.debug(subprocess.call(ffmpeg_command))
 
 if __name__ == "__main__":
   logger.setLevel(logging.DEBUG)
@@ -184,10 +190,12 @@ if __name__ == "__main__":
   logging.basicConfig(level=level)
 
 
-  #fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'
   bhv = brd.read_bhv(fname = args.file)
-  options = {'tstep': args.tstep}
-  movie_data = prepare_trial(bhv, args.trial, options)
+  options = {
+    'tstep': args.tstep,
+    'movie name': os.path.basename(args.file) + '_t{:04d}.avi'.format(args.trial)
+  }
+  movie_data = prepare_trial(bhv, args.trial - 1, options)
   logger.debug('{:d} frames {:0.2f} ms'.format(movie_data['tframe'].size, movie_data['tframe'][-1]))
-  play(movie_data)
+  play(movie_data, options)
 
