@@ -150,9 +150,10 @@ def single_frame(movie_data, frame_no):
       pylab.imshow(objects[n-1], extent=ext, interpolation='none')
 
   pylab.plot(fd[0,1], -fd[0,2], 'w.')  #Plot eye position
-  pylab.text(-sx/2,sy/2, t_ms)
-  pylab.setp(ax, 'xticks', [], 'yticks', [], 'axis_bgcolor', scr_col, 'ylim',[sy/2, -sy/2])#Ensures reversed y-axis uniformly (otherwise images will flip y-axis w/o warning)
+  pylab.text(-0.99*sx/2,0.99*sy/2, '{:04.0f} ms'.format(t_ms), name='mono', size=7)
+
   pylab.axis('scaled')
+  pylab.setp(ax, 'xticks', [], 'yticks', [], 'axis_bgcolor', scr_col, 'ylim',[sy/2, -sy/2], 'xlim', [-sx/2, sx/2])#Ensures reversed y-axis uniformly (otherwise images will flip y-axis w/o warning)
 
 
 def play(movie_data):
@@ -187,5 +188,6 @@ if __name__ == "__main__":
   bhv = brd.read_bhv(fname = args.file)
   options = {'tstep': args.tstep}
   movie_data = prepare_trial(bhv, args.trial, options)
+  logger.debug('{:d} frames {:0.2f} ms'.format(movie_data['tframe'].size, movie_data['tframe'][-1]))
   play(movie_data)
 
