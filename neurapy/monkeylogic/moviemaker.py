@@ -77,7 +77,8 @@ def prepare_trial(bhv, trl, options):
   tstep = options['tstep'] #ms between frames
   tstart = bhv['CodeTimes'][trl][2]
   tend = bhv['CodeTimes'][trl][-3]
-  fcount = tend/tstep
+  fcount = int(tend/tstep)
+  logger.debug(str(fcount) + ' frames')
 
   tframe = pylab.arange(fcount)*tstep #in ms
   eyex_i = pylab.interp(tframe, 1000*pylab.arange(eyex.size)/fs, eyex)#1000x to get ms
@@ -117,6 +118,7 @@ def prepare_trial(bhv, trl, options):
       break
 
   movie_data = {
+    'speed': options['speed'],
     'screen color': scr_col,
     'screen size': scr_size,
     'pixels per degree': ppd,
@@ -132,6 +134,7 @@ def prepare_trial(bhv, trl, options):
 
 def single_frame(movie_data, frame_no):
   """Do the dirty work of converting the movie data into a plot of a single frame."""
+  speed = movie_data['speed']
   t_ms = movie_data['tframe'][frame_no] - movie_data['tstart']
   scr_col = movie_data['screen color']
   sx, sy = movie_data['screen size']
@@ -150,13 +153,13 @@ def single_frame(movie_data, frame_no):
       pylab.imshow(objects[n-1], extent=ext, interpolation='none')
 
   pylab.plot(fd[0,1], -fd[0,2], 'w.')  #Plot eye position
-  pylab.text(-0.99*sx/2,0.99*sy/2, '{:04.0f} ms'.format(t_ms), name='mono', size=7)
+  pylab.text(-0.99*sx/2,0.99*sy/2, '{:04.0f} ms  (x{:1.2f})'.format(t_ms, speed), name='mono', size=7)
 
   pylab.axis('scaled')
   pylab.setp(ax, 'xticks', [], 'yticks', [], 'axis_bgcolor', scr_col, 'ylim',[sy/2, -sy/2], 'xlim', [-sx/2, sx/2])#Ensures reversed y-axis uniformly (otherwise images will flip y-axis w/o warning)
 
 
-def play(movie_data, options):
+def play(movie_data):
   """Cycle through all the frames, save them as needed."""
   tdir = tempfile.mkdtemp(suffix='_ml_momkr') #Temporary directory for frames
   logger.debug('Frames are being placed in ' + tdir)
@@ -168,7 +171,7 @@ def play(movie_data, options):
     pylab.savefig(fname)
     pylab.close()
 
-  ffmpeg_command = ['ffmpeg','-i', tdir + '/frame%05d.png', '-vcodec', 'libx264', '-x264opts', 'keyint=123:min-keyint=20', '-an', '-y', '-f', 'avi', options['movie name']]
+  ffmpeg_command = ['ffmpeg','-i', tdir + '/frame%05d.png', '-vcodec', 'libx264', '-x264opts', 'keyint=123:min-keyint=20', '-r', str(options['fps']), '-an', '-y', '-f', 'avi', options['movie name']]
   logger.debug(ffmpeg_command)
   logger.debug(subprocess.call(ffmpeg_command))
 
@@ -179,7 +182,8 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('-f','--file', help=".bhv file full path")
   parser.add_argument('-t', '--trial', help="Trial number", default=0, type=int)
-  parser.add_argument('-s', '--tstep', help="tstep (ms)", default=10, type=int)
+  parser.add_argument('-x', '--speed', help="Speed multiplier of movie relative to actual speed", default=1.0, type=float)
+  parser.add_argument('--fps', help="fps of video", default=25.0, type=float)
   parser.add_argument('-v','--verbose', action="store_true", default=False, help="Print logger messages")
   args = parser.parse_args()
 
@@ -189,13 +193,16 @@ if __name__ == "__main__":
     level = logging.ERROR
   logging.basicConfig(level=level)
 
+  options = {
+    'speed': args.speed,
+    'tstep': (1000* args.speed)/args.fps,
+    'movie name': os.path.basename(args.file)[:-4] + '_t{:04d}_{:1.1f}.avi'.format(args.trial, args.speed),
+    #'fps': (1000.0/args.tstep) * args.speed
+    'fps': args.fps
+  }
 
   bhv = brd.read_bhv(fname = args.file)
-  options = {
-    'tstep': args.tstep,
-    'movie name': os.path.basename(args.file)[:-4] + '_t{:04d}.avi'.format(args.trial)
-  }
   movie_data = prepare_trial(bhv, args.trial - 1, options)
   logger.debug('{:d} frames {:0.2f} ms'.format(movie_data['tframe'].size, movie_data['tframe'][-1]))
-  play(movie_data, options)
+  play(movie_data)
 
