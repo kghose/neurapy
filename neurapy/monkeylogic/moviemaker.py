@@ -90,7 +90,7 @@ def prepare_trial(bhv, trl, options):
   #index 0 - frame number
   #index 1 - object number 0=eye, 1 ... ocount = objects
   #index 2 -> [0] - visible (1) or not (0)
-  #           [1,2] - xy position in pixels
+  #           [1,2] - xy position in degrees
 
   cur_ev = 0 #This keeps track of which is the next event in the object status record we are hoing to hit
 
@@ -209,4 +209,3 @@ if __name__ == "__main__":
   movie_data = prepare_trial(bhv, args.trial - 1, options)
   logger.debug('{:d} frames {:0.2f} ms'.format(movie_data['tframe'].size, movie_data['tframe'][-1]))
   play(movie_data)
-
