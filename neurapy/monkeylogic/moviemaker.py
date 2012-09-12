@@ -201,7 +201,6 @@ if __name__ == "__main__":
     'speed': args.speed,
     'tstep': (1000* args.speed)/args.fps,
     'movie name': os.path.basename(args.file)[:-4] + '_t{:04d}_{:1.1f}.avi'.format(args.trial, args.speed),
-    #'fps': (1000.0/args.tstep) * args.speed
     'fps': args.fps
   }
 
