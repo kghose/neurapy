@@ -153,7 +153,11 @@ def single_frame(movie_data, frame_no):
       pylab.imshow(objects[n-1], extent=ext, interpolation='none')
 
   pylab.plot(fd[0,1], -fd[0,2], 'w.')  #Plot eye position
-  pylab.text(-0.99*sx/2,0.99*sy/2, '{:04.0f} ms  (x{:1.2f})'.format(t_ms, speed), name='mono', size=7)
+
+  pylab.plot([8, 10, 10], [10, 10, 8], 'y-') #Scale bar
+  pylab.text(9, 9, r'$2^{o}$', size=6, horizontalalignment='center', verticalalignment='center',) #Scale bar text
+
+  pylab.text(-0.99*sx/2,0.99*sy/2, '{:04.0f} ms  (x{:1.2f})'.format(t_ms, speed), name='mono', size=7)#Frame info
 
   pylab.axis('scaled')
   pylab.setp(ax, 'xticks', [], 'yticks', [], 'axis_bgcolor', scr_col, 'ylim',[sy/2, -sy/2], 'xlim', [-sx/2, sx/2])#Ensures reversed y-axis uniformly (otherwise images will flip y-axis w/o warning)
