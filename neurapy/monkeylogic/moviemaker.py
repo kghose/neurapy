@@ -177,12 +177,10 @@ def play(movie_data):
 
   ffmpeg_command = ['ffmpeg','-i', tdir + '/frame%05d.png', '-vcodec', 'libx264', '-x264opts', 'keyint=123:min-keyint=20', '-r', str(options['fps']), '-an', '-y', '-f', 'avi', options['movie name']]
   logger.debug(ffmpeg_command)
-  logger.debug(subprocess.call(ffmpeg_command))
+  if subprocess.call(ffmpeg_command) is 0:
+    logger.debug('movie creation successful')
 
 if __name__ == "__main__":
-  logger.setLevel(logging.DEBUG)
-  logger.addHandler(logging.StreamHandler())
-
   parser = argparse.ArgumentParser()
   parser.add_argument('-f','--file', help=".bhv file full path")
   parser.add_argument('-t', '--trial', help="Trial number", default=0, type=int)
@@ -206,5 +204,4 @@ if __name__ == "__main__":
 
   bhv = brd.read_bhv(fname = args.file)
   movie_data = prepare_trial(bhv, args.trial - 1, options)
-  logger.debug('{:d} frames {:0.2f} ms'.format(movie_data['tframe'].size, movie_data['tframe'][-1]))
   play(movie_data)
