@@ -2,9 +2,9 @@
 ---------
 Reads in .bhv files produced by monkeylogic
 
-`from neurapy.monkeylogic import bhv_read as brd
+    from neurapy.monkeylogic import bhv_read as brd
 
-bhv = brd.read_bhv(fname='my_bhv_file.bhv')`
+    bhv = brd.read_bhv(fname='my_bhv_file.bhv')
 
 
 `bhv.keys()` will let you browse the keys, which are the same as the structs that
