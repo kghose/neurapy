@@ -53,6 +53,8 @@ def boot_confint(val, ci = .05, bootstraps=2000):
   def one_ci(v, ci, bootstraps):
     v = pylab.array(v)
     v = pylab.ma.masked_array(v,pylab.isnan(v)).compressed()
+    if v.size == 0:
+      return pylab.nan, 0, 0 #Nothing to compute
 
     r = pylab.randint(v.size, size=(v.size, bootstraps))
     booted_samp = pylab.array([pylab.median(v[r[:,n]]) for n in xrange(bootstraps)])
