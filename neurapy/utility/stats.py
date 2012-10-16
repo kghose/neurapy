@@ -46,8 +46,8 @@ def bin_confint(pc, nsamp, ci = .05, bootstraps=2000):
 def boot_confint(val, ci = .05, bootstraps=2000):
   """Full blown bootstrapping for arbitrary variable types.
 
-  val - list of lists/arrays
-  ci - confidence interval
+  val - list of arrays (get back several cis) or array (get back one ci)
+  ci - confidence interval level (1-confidence level)
   bootstraps - bootstraps to use
   """
   def one_ci(v, ci, bootstraps):
@@ -66,7 +66,11 @@ def boot_confint(val, ci = .05, bootstraps=2000):
 
     return med, med-booted_samp[idx_lo], booted_samp[idx_hi]-med
 
-  return pylab.array([one_ci(v, ci, bootstraps) for v in val]).T
+  #Need to male it user friendly here to handle list of lists intelligently
+  if val.__class__ == list:#We could be sending in a list of lists/arrays
+    return pylab.array([one_ci(v, ci, bootstraps) for v in val]).T
+  else:
+    return one_ci(val, ci, bootstraps)
 
 def boot_curvefit(x,y,fit, p0, ci = .05, bootstraps=2000):
   """use of bootstrapping to perform curve fitting.
