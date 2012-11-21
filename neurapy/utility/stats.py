@@ -74,26 +74,43 @@ def bin_confint_lookup(pc, nsamp, ci = .05):
 
   return pylab.array((pc,low_ci,high_ci))
 
+
+def compute_section(inputs):
+  pc = inputs[0]
+  nsamp = inputs[1]
+  ci = inputs[2]
+  points = pylab.zeros((pc.size,3))
+  points[:,0] = pc
+  points[:,1] = nsamp
+  points[:,2] = ci
+  this_ci = bin_confint(pc, pylab.ones(pc.size)*nsamp, ci = ci, bootstraps=2000)
+  values_lo = this_ci[1,:]
+  values_high = this_ci[2,:]
+  return points, values_lo, values_high
+
 def generate_ci_table():
   """Generate the ci table that bin_confint uses."""
+
   pc = pylab.arange(1,step=.1)
-  nsamp = 2**pylab.arange(1,6)
+  nsamp = 2**pylab.arange(1,10)
   ci = pylab.array([0.01, 0.05, 0.1])
   points = pylab.zeros((pc.size*nsamp.size*ci.size,3)) #pc, nsamp, ci
   values_lo = pylab.zeros(pc.size*nsamp.size*ci.size)
   values_high = pylab.zeros(pc.size*nsamp.size*ci.size)
 
-  ctr = 0
+  from multiprocessing import Pool
+  inputs = []
   for i in xrange(ci.size):
     for j in xrange(nsamp.size):
-      this_ci = bin_confint(pc, pylab.ones(pc.size)*nsamp[j], ci = ci[i], bootstraps=2000)
-      for k in xrange(pc.size):
-        points[ctr,0] = pc[k]
-        points[ctr,1] = nsamp[j]
-        points[ctr,2] = ci[i]
-        values_lo[ctr] = this_ci[1,k]
-        values_high[ctr] = this_ci[2,k]
-        ctr += 1
+      inputs.append([pc, nsamp[j], ci[i]])
+
+  pool = Pool(processes=10)
+  outputs = pool.map(compute_section, inputs)
+
+  for i in xrange(ci.size):
+    for j in xrange(nsamp.size):
+      idx = (i*nsamp.size + j)*pc.size
+      points[idx:idx+pc.size], values_lo[idx:idx+pc.size], values_high[idx:idx+pc.size] = outputs.pop()
 
   data = {
     'pc': pc,
