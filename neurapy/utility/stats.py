@@ -1,4 +1,6 @@
 """Some statistical utilities."""
+import logging
+logger = logging.getLogger(__name__)
 import pylab, cPickle, os
 this_dir, this_filename = os.path.split(__file__) #Needed for the lookup table
 #see http://stackoverflow.com/questions/779495/python-access-data-in-package-subdirectory
@@ -79,6 +81,7 @@ def compute_section(inputs):
   pc = inputs[0]
   nsamp = inputs[1]
   ci = inputs[2]
+  logger.info('Computing N={:d}, ci={:03f}'.format(nsamp, ci))
   points = pylab.zeros((pc.size,3))
   points[:,0] = pc
   points[:,1] = nsamp
@@ -214,4 +217,5 @@ def binary_phi(b1,b2):
   return (n11*n00 - n10*n01)/(n1s*n0s*ns0*ns1)**.5
 
 if __name__ == '__main__':
+  logging.basicConfig(level=logging.DEBUG)
   data = generate_ci_table()
