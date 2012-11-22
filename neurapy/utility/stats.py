@@ -83,7 +83,7 @@ def compute_section(inputs):
   points[:,0] = pc
   points[:,1] = nsamp
   points[:,2] = ci
-  this_ci = bin_confint(pc, pylab.ones(pc.size)*nsamp, ci = ci, bootstraps=2000)
+  this_ci = bin_confint(pc, pylab.ones(pc.size)*nsamp, ci = ci, bootstraps=10000)
   values_lo = this_ci[1,:]
   values_high = this_ci[2,:]
   return points, values_lo, values_high
