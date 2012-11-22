@@ -91,8 +91,8 @@ def compute_section(inputs):
 def generate_ci_table():
   """Generate the ci table that bin_confint uses."""
 
-  pc = pylab.arange(1,step=.1)
-  nsamp = 2**pylab.arange(1,10)
+  pc = pylab.arange(1,step=.05)
+  nsamp = 2**pylab.arange(1,15)
   ci = pylab.array([0.01, 0.05, 0.1])
   points = pylab.zeros((pc.size*nsamp.size*ci.size,3)) #pc, nsamp, ci
   values_lo = pylab.zeros(pc.size*nsamp.size*ci.size)
