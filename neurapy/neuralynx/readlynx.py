@@ -85,6 +85,39 @@ def read_nev(fin):
   return {'header': hdr, 'system id': system_id, 'time stamp': time_stamp, 'event id': event_id, 'event code': ttl_code,
           'extra bits': extra_bits, 'event string': event_string}
 
+def read_nse(fin):
+  """Read single electrode spike record."""
+  time_stamp = []
+  saen = []
+  cell_no = []
+  features = []
+  waveform = []
+
+  hdr = read_header(fin)
+  fmt = '=QII8I32h'
+  sz = csize(fmt)
+  while fin:
+    dain = fin.read(sz)
+    if len(dain) < sz:
+      break
+      #data.append(upk(fmt, dain))
+    daup = upk(fmt, dain)
+    qwTimeStamp, dwScNumber, dwCellNumber = daup[:3]
+    dnParams = daup[3:12]
+    snData = daup[12:]
+
+    time_stamp.append(qwTimeStamp)
+    saen.append(dwScNumber)
+    cell_no.append(dwCellNumber)
+    features.append(dnParams)
+    waveform.append(snData)
+
+  return {'header': hdr, 'time stamp': time_stamp, 'spike acquisition entity': saen, 'cell number': cell_no,
+          'features': features, 'waveform': waveform}
+
+
+
+
 #fin = open('/Users/kghose/Downloads/data/raw/A18.Ncs')
 #fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-10-31_12-46-18/CSC_photo.ncs')
 #fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-10-31_12-46-18/CSC_lfp1.ncs')
@@ -92,6 +125,10 @@ def read_nev(fin):
 #data = read_csc(fin)
 #fin.close()
 
-fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/Events.nev')
-data = read_nev(fin)
+#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/Events.nev')
+#data = read_nev(fin)
+#fin.close()
+
+fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/SE2.nse')
+data = read_nse(fin)
 fin.close()
