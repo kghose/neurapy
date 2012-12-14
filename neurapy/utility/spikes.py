@@ -15,6 +15,30 @@ def poisson_train(rate, duration):
   idx = pylab.find(r < p)
   return idx
 
+def window_spike_train(timestamps, window_len):
+  """Break up a spike train into windows (epochs).
+  Inputs:
+    timestamps - timestamps of the spikes
+    window_len - length of the window. Must be in same units as that of the timestamps
+  Output:
+    epochs - list of tuples (start_idx, end_idx)
+  """
+  start_idx = 0
+  end_idx = 0
+  window_end = window_len
+  epochs = []
+  fragments = []
+  while start_idx < timestamps.size:
+    while timestamps[end_idx] < window_end:
+      end_idx += 1
+      if end_idx == timestamps.size:
+        break
+    epochs.append([start_idx,end_idx])
+    start_idx = end_idx
+    window_end += window_len
+
+  return epochs
+
 
 def spikecv(timestamps, window_len):
   """Given the time stamps compute the coefficient of variation with a sliding window.
