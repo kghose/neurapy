@@ -15,6 +15,19 @@ def poisson_train(rate, duration):
   idx = pylab.find(r < p)
   return idx/1000.
 
+def correlated_poisson_train(rate, duration, r):
+  """Return time stamps from two simulated poisson processes at given rates and over given duration.
+
+  The granularity is 1ms
+  Inputs:
+    rate - In Hz
+    duration - in s
+  Output:
+    Array of time stamps in s
+  """
+
+
+
 def window_spike_train(timestamps, start_time=0, zero_times=0, end_time=None, window_len=1, subwindow_len=None):
   """Break up a spike train into windows and subwindows marching outwards from zero_time.
 
@@ -180,8 +193,8 @@ def spikecv(timestamps, start_time=0, zero_times=0, end_time=None, window_len=.1
 
   window_edges, windows, subwindows = window_spike_train(timestamps, start_time, zero_times, end_time, window_len=window_len)
   isi = pylab.diff(timestamps)
-  if windows.shape[0]:
-    windows[-1,1] -= 1 #we have one less isi sample than timestamps
+  if windows.shape[1]:
+    windows[:,-1,1] -= 1 #we have one less isi sample than timestamps
 
   t = pylab.zeros(windows.shape[1])
   cv = pylab.zeros(windows.shape[1])
@@ -280,6 +293,75 @@ def spike_triggered_histogram(tsA, tsB, window_len, range, nbins):
     t[n] = window_len * (n + .5)
 
   return t, be, spkhist
+
+def spikecount_correlation(tsA, tsB, start_time=0, zero_times=0, end_time=None, window_len=.1, subwindow_len=None):
+  """Given the time stamps compute the spike count correlation with a jumping window.
+  Inputs:
+    tsA, tsB - the two spike train timestamps.
+    start_time - time rel to zero_time we end our windows (needs to be <= 0).
+                 If zero, means no pre windows.
+                 If None, means prewindows stretch to begining of data
+                 The start_time is extended to include an integer number of windows
+    zero_times  - reference time. Can be a zx1 array, in which case will give us an array of windows. If scalar
+                 will only give one set of windows.
+    end_time   - time rel to zero_time we end our windows (needs to >= 0)
+                 If zero, means no post-windows
+                 If None, means post-windows stretch to end of data
+                 The end_time is extended to include an integer number of windows
+    window_len - length of window to look at isi (in same units as time stamps)
+    subwindow_len - length of one spike count computation window
+
+  Outputs:
+    t  - time array
+    r  -  the correlation vector
+  """
+  def correl_single_window(sbwA, sbwB):
+    """sbwA and sbwB are obtained as subwindowsA[:,n,:,:], with n marching through all the windows.
+    Indexes - 0 -> epochs
+              1 -> subwindows
+              2 -> start/stop
+
+    """
+    N0 = sbwA.shape[0]
+    N1 = sbwA.shape[1]
+    spk_countA = pylab.zeros((N0,N1))
+    spk_countB = pylab.zeros((N0,N1))
+    for n in xrange(N0): #Epochs
+      for m in xrange(N1): #subwindows
+        spk_countA[n,m] = sbwA[n,m,1] - sbwA[n,m,0]
+        spk_countB[n,m] = sbwB[n,m,1] - sbwB[n,m,0]
+
+
+
+    spk_countA = spk_countA.flatten() - spk_countA.mean()
+    spk_countB = spk_countB.flatten() - spk_countB.mean()
+    R = pylab.corrcoef(spk_countA, spk_countB)
+    if R.size:
+      r = R[0,1]
+    else:
+      r = 0
+    return r
+
+  window_edgesA, windowsA, subwindowsA =\
+    window_spike_train(tsA, start_time=start_time, zero_times=zero_times, end_time=end_time, window_len=window_len, subwindow_len=subwindow_len)
+  window_edgesB, windowsB, subwindowsB =\
+    window_spike_train(tsB, start_time=start_time, zero_times=zero_times, end_time=end_time, window_len=window_len, subwindow_len=subwindow_len)
+
+  #The only time we will have different numbers of windows is when zero_times is scalar, end_time is None and the two
+  #trains are of different lengths
+  wmin = min(windowsA.shape[1],windowsB.shape[1])
+  #print wmin
+  r = pylab.zeros(wmin)
+  for n in xrange(wmin):
+    #computation of r
+    sbwA = subwindowsA[:,n,:,:]
+    sbwB = subwindowsB[:,n,:,:]
+    r[n] = correl_single_window(sbwA, sbwB)
+
+  t = (window_edgesA[1:] + window_edgesA[:-1])/2
+  return t, r
+
+
 
 if __name__ == "__main__":
   zeros = pylab.arange(2, 40, 4)
