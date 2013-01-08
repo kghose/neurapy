@@ -129,6 +129,8 @@ def read_nse(fin):
 #data = read_nev(fin)
 #fin.close()
 
-fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/SE2.nse')
+#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/SE2.nse')
+#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/fake1.nse')
+fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/fake4.nse')
 data = read_nse(fin)
 fin.close()
