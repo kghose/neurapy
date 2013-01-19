@@ -1,6 +1,6 @@
 """Functions to read the flotilla of files produced by the Neuralynx system."""
 
-from struct import unpack as upk, calcsize as csize
+from struct import unpack as upk, pack as pk, calcsize as csize
 import pylab, logging, argparse
 logger = logging.getLogger(__name__)
 
@@ -115,8 +115,20 @@ def read_nse(fin):
   return {'header': hdr, 'time stamp': time_stamp, 'spike acquisition entity': saen, 'cell number': cell_no,
           'features': features, 'waveform': waveform}
 
+def write_nse(fname, time_stamps, remarks=''):
+  """Write out the given time stamps into a nse file."""
+  with open(fname,'wb') as fout:
+    fmt = '=QII8I32h'
+    dwScNumber = 1
+    dwCellNumber = 1
+    #dnParams = [0]*8
+    #snData = [0]*32
+    garbage = [0]*40
 
-
+    header = remarks.ljust(16*1024,'\x00')
+    fout.write(header)
+    for ts in time_stamps:
+      fout.write(pk(fmt, ts, dwScNumber, dwCellNumber, *garbage))
 
 #fin = open('/Users/kghose/Downloads/data/raw/A18.Ncs')
 #fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-10-31_12-46-18/CSC_photo.ncs')
@@ -131,6 +143,6 @@ def read_nse(fin):
 
 #fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/SE2.nse')
 #fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/fake1.nse')
-fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/fake4.nse')
-data = read_nse(fin)
-fin.close()
+#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/fake4.nse')
+#data = read_nse(fin)
+#fin.close()
