@@ -2,15 +2,17 @@ NeuraPy
 -------
 is a collection of python modules useful for analyzing data obtained in neurophysiological experiments.
 
+* cerebus - a module for loading .nev and .nsx files saved by BlackRock's [Cerebus][cb] software
 * lablib - a module for loading [lablib][lablib] data files
 * monkeylogic - a module for loading data files saved by the [MonkeyLogic][ml] program
-* cerebus - a module for loading .nev and .nsx files saved by BlackRock's [Cerebus][cb] software
+* neuralynx - a module for reading files produced by [neuralynx][nl] boxes
 * plexon - a module for loading .nex and .plx files produced by the Plexon [Map][map] system
 
 [lablib]: http://maunsell.med.harvard.edu/software.html
 [ml]: http://www.monkeylogic.net/
 [cb]: http://www.blackrockmicro.com/content.aspx?id=13
 [map]: http://www.plexon.com/product/Multichannel_Acquisition_Processor__MAP__.html
+[nl]: http://neuralynx.com/products/digital_data_acquisition_systems/
 
 Installation
 ------------
