@@ -9,49 +9,50 @@ def read_header(fin):
   return fin.read(16*1024).strip('\00')
 
 def read_csc(fin):
-  """Read a continuous record file"""
+  """Read a continuous record file.
+  We assume that the sampling frequency is fixed throughout the trace. The sampling frequency is computed from the
+  average time period between packets.
+  We assume that no samples are dropped during the recording (within a segment)
+  """
   hdr = read_header(fin)
-  packet_info = []
-  snSamples = []
   fmt = '=QIII512h' #= prevents padding and alignment nonsense 512 based on the Neuralynx we have
   sz = csize(fmt)
+
+  real_Fs_list = [] #Calculated Fs
+
+  segments = [] #We might have several 'runs' if we start and stop the recording during the same file
+  segment_t = [] #Start time of the segments
+  current_segment = None
+
+  last_packet_t_us = -1
+  predicted_next_packet_t_us = -1
   while fin:
     dain = fin.read(sz)
     if len(dain) < sz:
       break
-    #data.append(upk(fmt, dain))
-    #qwTimeStamp, dwChannelNumber, dwSampleFreq, dwNumValidSamples, snSamples = upk(fmt, dain)
     daup = upk(fmt, dain)
-    packet_info.append(daup[:4])
-    snSamples.append(daup[4:])
+    current_packet_t_us = daup[0] #Time stamp of the packet
+    if last_packet_t_us > 0:
+      real_Fs_list.append(n_valid_samps * 1e6/(current_packet_t_us - last_packet_t_us))
 
-  waveforms = [] #We might have several 'runs'
-  tstarts = [] #Start times of the runs
-  epsilon = 1e6 #We assume the system isn't dropping samples, and that we need to separate out the packets only if we
-                #have have an actual gap in the record (if we stopped and started again). We set this threshold to be 1s
-                #Contact NeuraLynx to see if this is reasonable
-  wf = None
-  end_t_us = -1
-  for pak,samp in zip(packet_info, snSamples):
-    start_t_us = pak[0]
-    if start_t_us - end_t_us > epsilon:
-      #Start a new packet
-      if wf is not None:#close out the old packet
-        waveforms.append(wf[:Nsamps])
-      tstarts.append(start_t_us)
-      Nsamps = 0
-      wf = pylab.zeros(len(packet_info)*512) #based on the Neuralynx we have
+    nominal_fs = daup[2] #The sampling freq the hardware claims
+    n_valid_samps = daup[3] #Number of valid samples in the packet
+    if current_packet_t_us - predicted_next_packet_t_us > 1e6/nominal_fs: #Start a new packet if the gap is larger than we expect
+      last_packet_t_us = -1 #We have a discontinuity in the packets. We should not use this as part of the Fs computation
+      if current_segment is not None:#close out the old segment
+        segments.append(current_segment)
+      current_segment = daup[4:4+n_valid_samps]
+      segment_t.append(current_packet_t_us)
+    else:
+      current_segment += daup[4:4+n_valid_samps]
+      last_packet_t_us = current_packet_t_us
+    predicted_next_packet_t_us = current_packet_t_us + 1e6*n_valid_samps/nominal_fs
 
-    Fs = pak[2]
-    N = pak[3]
-    wf[Nsamps:Nsamps+N] = samp[:N]
-    Nsamps += N
-    end_t_us = start_t_us + 1e6*N/Fs
 
-  if wf is not None:#close out the old packet
-    waveforms.append(wf[:Nsamps])
+  if current_segment is not None:#close out the old packet
+    segments.append(current_segment)
 
-  return {'header': hdr, 'packet': packet_info, 'waveforms': waveforms, 'tstarts': tstarts}
+  return {'header': hdr, 'segments': segments, 't': segment_t, 'Fs': sum(real_Fs_list)/len(real_Fs_list)}
 
 def read_nev(fin):
   """Read an event file."""
