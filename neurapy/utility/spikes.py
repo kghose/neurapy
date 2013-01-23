@@ -2,7 +2,11 @@
 import pylab
 
 def poisson_train(rate, duration):
-  """Return time stamps from a simulated poisson process at given rate and over given duration. The granularity is 1ms
+  """Return time stamps from a simulated poisson process at given rate and over given duration. The granularity is 1ms.
+  We break up duration into N bins of 1ms size. The probability of there being an event (spike) in a given bin is the
+  same as the rate in kHz. We generate N uniformly distributed random numbers and use that to decide if a given bin has
+  a spike or not.
+
   Inputs:
     rate - In Hz
     duration - in s
@@ -206,12 +210,17 @@ def spikecv(timestamps, start_time=0, zero_times=0, end_time=None, window_len=.1
       #CV computation
       collected_isi = pylab.concatenate((collected_isi, isi[windows[m,n,0]:windows[m,n,1]]))
 
-    mean = collected_isi.mean()
-    std = collected_isi.std()
-    cv[n] = std/mean
-    rate[n] = 1./mean
-    t[n] = window_len * (n + .5)
+    if collected_isi.size > 0:
+      mean = collected_isi.mean()
+      std = collected_isi.std()
+      cv[n] = std/mean
+      rate[n] = 1./mean
+    else:
+      cv[n] = 0
+      rate[n] = 0
 
+    #t[n] = window_len * (n + .5)
+  t = (window_edges[1:] + window_edges[:-1])/2
   return t, cv, rate
 
 def spikefano(timestamps, start_time=0, zero_times=0, end_time=None, window_len=.1, subwindow_len=None):
@@ -259,11 +268,6 @@ def spike_triggered_histogram(tsA, tsB, window_len, range, nbins):
 
   (Can be plotted by doing pylab.pcolor(t, be, spkhist.T,vmin=0,vmax=1, cmap=pylab.cm.gray_r))
   """
-
-
-  #t = pylab.arange(300)*60
-  #be = pylab.arange(-.1,.1,.01)
-  #return t, be, pylab.rand(t.size-1, be.size-1)
 
   bins = pylab.linspace(range[0], range[1], nbins+1) #We are doing bin edges
   epochs = window_spike_train(tsA, window_len)
