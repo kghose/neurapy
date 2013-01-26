@@ -86,13 +86,20 @@ def read_nev(fin):
   return {'header': hdr, 'system id': system_id, 'time stamp': time_stamp, 'event id': event_id, 'event code': ttl_code,
           'extra bits': extra_bits, 'event string': event_string}
 
-def read_nse(fin):
-  """Read single electrode spike record."""
-  time_stamp = []
-  saen = []
-  cell_no = []
-  features = []
-  waveform = []
+def read_nse(fin, only_timestamps=True):
+  """Read single electrode spike record.
+  Inputs:
+    fin - file handle
+    only_timestamps - if true, only load the timestamps, ignoring the waveform and feature data
+
+  Output: Dictionary with fields
+
+  """
+  time_stamp = [[] for n in xrange(100)] #if we have more than 100 units on the wire we have other problems
+  saen = [[] for n in xrange(100)]
+  max_units = 0
+  features = [[] for n in xrange(100)]
+  waveform = [[] for n in xrange(100)]
 
   hdr = read_header(fin)
   fmt = '=QII8I32h'
@@ -104,17 +111,21 @@ def read_nse(fin):
       #data.append(upk(fmt, dain))
     daup = upk(fmt, dain)
     qwTimeStamp, dwScNumber, dwCellNumber = daup[:3]
-    dnParams = daup[3:12]
-    snData = daup[12:]
+    time_stamp[dwCellNumber].append(qwTimeStamp)
+    saen[dwCellNumber].append(dwScNumber)
+    if not only_timestamps:
+      dnParams = daup[3:12]
+      snData = daup[12:]
+      features[dwCellNumber].append(dnParams)
+      waveform[dwCellNumber].append(snData)
+    if dwCellNumber > max_units:
+      max_units = dwCellNumber #Keeps track of maximum sorted units
 
-    time_stamp.append(qwTimeStamp)
-    saen.append(dwScNumber)
-    cell_no.append(dwCellNumber)
-    features.append(dnParams)
-    waveform.append(snData)
-
-  return {'header': hdr, 'time stamp': time_stamp, 'spike acquisition entity': saen, 'cell number': cell_no,
-          'features': features, 'waveform': waveform}
+  dict = {'header': hdr, 'time stamp': time_stamp[:max_units+1], 'spike acquisition entity': saen[:max_units+1]}
+  if not only_timestamps:
+    dict['features'] = features[:max_units+1]
+    dict['waveform'] = waveform[:max_units+1]
+  return dict
 
 def write_nse(fname, time_stamps, remarks=''):
   """Write out the given time stamps into a nse file."""
