@@ -1,7 +1,7 @@
 """Functions to read the flotilla of files produced by the Neuralynx system."""
 
 from struct import unpack as upk, pack as pk, calcsize as csize
-import pylab, logging, argparse
+import logging
 logger = logging.getLogger(__name__)
 
 def read_header(fin):
@@ -94,21 +94,31 @@ def read_nse(fin, only_timestamps=True):
 
   Output: Dictionary with fields
 
+
+  Notes:
+    0. What is spike acquizition entity number? Ask neuralynx
+    1. Removing LOAD_ATTR overhead by defining time_stamp_append = [time_stamp[n].append for n in xrange(100)] and using
+       time_stamp_append[dwCellNumber](qwTimeStamp) in the loop does not seem to improve performance.
+       It reduces readability so I did not use it.
+    2. Disabling garbage collection did not help
+    3. In general, dictionary lookups slow things down
+    4. using numpy arrays, with preallocation is slower than the dumb, straightforward python list appending
   """
-  time_stamp = [[] for n in xrange(100)] #if we have more than 100 units on the wire we have other problems
-  saen = [[] for n in xrange(100)]
-  max_units = 0
-  features = [[] for n in xrange(100)]
-  waveform = [[] for n in xrange(100)]
 
   hdr = read_header(fin)
   fmt = '=QII8I32h'
   sz = csize(fmt)
+
+  max_units = 0
+  time_stamp = [[] for n in xrange(100)] #if we have more than 100 units on the wire we have other problems
+  saen = [[] for n in xrange(100)]
+  features = [[] for n in xrange(100)]
+  waveform = [[] for n in xrange(100)]
+
   while fin:
     dain = fin.read(sz)
     if len(dain) < sz:
       break
-      #data.append(upk(fmt, dain))
     daup = upk(fmt, dain)
     qwTimeStamp, dwScNumber, dwCellNumber = daup[:3]
     time_stamp[dwCellNumber].append(qwTimeStamp)
@@ -118,6 +128,7 @@ def read_nse(fin, only_timestamps=True):
       snData = daup[12:]
       features[dwCellNumber].append(dnParams)
       waveform[dwCellNumber].append(snData)
+
     if dwCellNumber > max_units:
       max_units = dwCellNumber #Keeps track of maximum sorted units
 
@@ -142,19 +153,11 @@ def write_nse(fname, time_stamps, remarks=''):
     for ts in time_stamps:
       fout.write(pk(fmt, ts, dwScNumber, dwCellNumber, *garbage))
 
-#fin = open('/Users/kghose/Downloads/data/raw/A18.Ncs')
-#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-10-31_12-46-18/CSC_photo.ncs')
-#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-10-31_12-46-18/CSC_lfp1.ncs')
-#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/CSC_lfp1.ncs')
-#data = read_csc(fin)
-#fin.close()
-
-#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/Events.nev')
-#data = read_nev(fin)
-#fin.close()
-
-#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/SE2.nse')
-#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/fake1.nse')
-#fin = open('/Users/kghose/Research/2012/Projects/Workingmemory/Data/NeuraLynx/2012-12-04_11-18-55/fake4.nse')
-#data = read_nse(fin)
-#fin.close()
+def test_read_nse(fname='/Users/kghose/Research/2013/Projects/Workingmemory/Data/NeuraLynx/2012-10-31_12-46-18/SE2.nse'):
+  import time
+  fin = open(fname)
+  t0 = time.time()
+  data = read_nse(fin)
+  t1 = time.time()
+  print t1 - t0
+  return data
