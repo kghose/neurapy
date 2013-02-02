@@ -83,6 +83,7 @@ def read_nev(fin):
     extra_bits.append(dnExtra)
     event_string.append(evstr)
 
+  logger.info('{:d} events'.format(len(time_stamp)))
   return {'header': hdr, 'system id': system_id, 'time stamp': time_stamp, 'event id': event_id, 'event code': ttl_code,
           'extra bits': extra_bits, 'event string': event_string}
 
