@@ -1,5 +1,6 @@
 """Functions to read the flotilla of files produced by the Neuralynx system."""
 
+import pylab
 from struct import unpack as upk, pack as pk, calcsize as csize
 import logging
 logger = logging.getLogger(__name__)
@@ -10,49 +11,38 @@ def read_header(fin):
 
 def read_csc(fin):
   """Read a continuous record file.
-  We assume that the sampling frequency is fixed throughout the trace. The sampling frequency is computed from the
-  average time period between packets.
-  We assume that no samples are dropped during the recording (within a segment)
+  Input:
+    fin - file handle
+  Ouput:
+    Dictionary with fields
+      'header' - the file header
+      'packets' - the actual packets as read. This is a new pylab dtype with fields:
+        'timestamp' - timestamp (us)
+        'chan' - channel
+        'Fs' - the sampling frequency
+        'Ns' - the number of valid samples in the packet
+        'samp' - the samples in the packet.
+          e.g. x['packets']['samp'] will return a 2D array, packets long and 512 wide (since each packet carries 512 wave points)
+          similarly x['packets']['timestamp'] will return an array packets long
+      'Fs': the average frequency computed from the timestamps (can differ from the nominal frequency the device reports)
+      'trace': the concatenated data from all the packets
+      't0': the timestamp of the first packet.
+  NOTE: while 'packets' returns the exact packets read, 'Fs' and 'trace' assume that the record has no gaps and that the
+  sampling frequency has not changed during the recording
   """
   hdr = read_header(fin)
-  fmt = '=QIII512h' #= prevents padding and alignment nonsense 512 based on the Neuralynx we have
-  sz = csize(fmt)
+  csc_packet = pylab.dtype([
+    ('timestamp', 'Q'),
+    ('chan', 'I'),
+    ('Fs', 'I'),
+    ('Ns', 'I'),
+    ('samp', '512h')
+  ])
 
-  real_Fs_list = [] #Calculated Fs
-
-  segments = [] #We might have several 'runs' if we start and stop the recording during the same file
-  segment_t = [] #Start time of the segments
-  current_segment = None
-
-  last_packet_t_us = -1
-  predicted_next_packet_t_us = -1
-  while fin:
-    dain = fin.read(sz)
-    if len(dain) < sz:
-      break
-    daup = upk(fmt, dain)
-    current_packet_t_us = daup[0] #Time stamp of the packet
-    if last_packet_t_us > 0:
-      real_Fs_list.append(n_valid_samps * 1e6/(current_packet_t_us - last_packet_t_us))
-
-    nominal_fs = daup[2] #The sampling freq the hardware claims
-    n_valid_samps = daup[3] #Number of valid samples in the packet
-    if current_packet_t_us - predicted_next_packet_t_us > 1e6/nominal_fs: #Start a new packet if the gap is larger than we expect
-      last_packet_t_us = -1 #We have a discontinuity in the packets. We should not use this as part of the Fs computation
-      if current_segment is not None:#close out the old segment
-        segments.append(current_segment)
-      current_segment = daup[4:4+n_valid_samps]
-      segment_t.append(current_packet_t_us)
-    else:
-      current_segment += daup[4:4+n_valid_samps]
-      last_packet_t_us = current_packet_t_us
-    predicted_next_packet_t_us = current_packet_t_us + 1e6*n_valid_samps/nominal_fs
-
-
-  if current_segment is not None:#close out the old packet
-    segments.append(current_segment)
-
-  return {'header': hdr, 'segments': segments, 't': segment_t, 'Fs': sum(real_Fs_list)/len(real_Fs_list)}
+  data = pylab.fromfile(fin, dtype=csc_packet, count=-1)
+  avgFs = (data['Ns'][:-1]/(pylab.diff(data['timestamp'])*1e-6)).mean() #This will be incorrect if the trace has pauses
+  trace = data['samp'].ravel()
+  return {'header': hdr, 'packets': data, 'Fs': avgFs, 'trace': trace, 't0': data['timestamp'][0]}
 
 def read_nev(fin):
   """Read an event file."""
