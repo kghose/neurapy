@@ -22,8 +22,8 @@ def read_csc(fin):
         'Fs' - the sampling frequency
         'Ns' - the number of valid samples in the packet
         'samp' - the samples in the packet.
-          e.g. x['packets']['samp'] will return a 2D array, packets long and 512 wide (since each packet carries 512 wave points)
-          similarly x['packets']['timestamp'] will return an array packets long
+          e.g. x['packets']['samp'] will return a 2D array, number of packets long and 512 wide (since each packet carries 512 wave points)
+          similarly x['packets']['timestamp'] will return an array number of packets long
       'Fs': the average frequency computed from the timestamps (can differ from the nominal frequency the device reports)
       'trace': the concatenated data from all the packets
       't0': the timestamp of the first packet.
@@ -44,38 +44,56 @@ def read_csc(fin):
   trace = data['samp'].ravel()
   return {'header': hdr, 'packets': data, 'Fs': avgFs, 'trace': trace, 't0': data['timestamp'][0]}
 
-def read_nev(fin):
-  """Read an event file."""
-  system_id = []
-  time_stamp = []
-  event_id = []
-  ttl_code = []
-  extra_bits = []
-  event_string = []
 
+def read_nev(fin, parse_event_string=False):
+  """Read an event file.
+  Input:
+    fin - file handle
+    parse_event_string - If set to true then parse the eventstrings nicely. This takes extra time. Default is False
+  Ouput:
+    Dictionary with fields
+      'header' - the file header
+      'packets' - the events. This is a new pylab dtype with fields corresponding to the event packets.
+        'nstx'
+        'npkt_id'
+        'npkt_data_size'
+        'timestamp' - timestamp (us)
+        'eventid'
+        'nttl' - value of the TTL port
+        'ncrc'
+        'ndummy1'
+        'ndummy2'
+        'dnExtra'
+        'eventstring' - The alphanumeric string NeuraLynx attaches to this event
+
+      'eventstring' - Only is parse_event_string is set to True. This is a nicely formatted eventstring
+  """
   hdr = read_header(fin)
-  fmt = '=hhhQhHhhh8i128s'
-  sz = csize(fmt)
-  while fin:
-    dain = fin.read(sz)
-    if len(dain) < sz:
-      break
-      #data.append(upk(fmt, dain))
-    daup = upk(fmt, dain)
-    dum1, npkt_id, dum2, qwTimeStamp, evid, nttl, dum3, dum4, dum5, = daup[:9]
-    dnExtra = daup[9:17]
-    evstr = daup[17].replace('\00','').strip()
-
-    system_id.append(npkt_id)
-    time_stamp.append(qwTimeStamp)
-    event_id.append(evid)
-    ttl_code.append(nttl)
-    extra_bits.append(dnExtra)
-    event_string.append(evstr)
-
-  logger.info('{:d} events'.format(len(time_stamp)))
-  return {'header': hdr, 'system id': system_id, 'time stamp': time_stamp, 'event id': event_id, 'event code': ttl_code,
-          'extra bits': extra_bits, 'event string': event_string}
+  nev_packet = pylab.dtype([
+    ('nstx', 'h'),
+    ('npkt_id', 'h'),
+    ('npkt_data_size', 'h'),
+    ('timestamp', 'Q'),
+    ('eventid', 'h'),
+    ('nttl', 'H'),
+    ('ncrc', 'h'),
+    ('ndummy1', 'h'),
+    ('ndummy2', 'h'),
+    ('dnExtra', '8i'),
+    ('eventstring', '128c')
+  ])
+  data = pylab.fromfile(fin, dtype=nev_packet, count=-1)
+  logger.info('{:d} events'.format(data['timestamp'].size))
+  if parse_event_string:
+    logging.info('Packaging the event strings. This makes things slower.')
+    # Makes things slow. Often this field is not needed
+    evstring = [None]*data['timestamp'].size
+    for n in xrange(data['timestamp'].size):
+      str = ''.join(data['eventstring'][n])
+      evstring[n] = str.replace('\00','').strip()
+    return {'header': hdr, 'packets': data, 'eventstring': evstring}
+  else:
+    return {'header': hdr, 'packets': data}
 
 def read_nse(fin, only_timestamps=True):
   """Read single electrode spike record.
