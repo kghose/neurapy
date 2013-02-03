@@ -107,7 +107,7 @@ def a_marker(f, dt, v):
     'timestamps': time_stamps
   }
   # Each time stamp can have several fields each with an associated value
-  # The plexon system only dumps one field whose value is the strobed word stored as a string
+  # The neuroexplorer system only dumps one field whose value is the strobed word stored as a string
 
   for n in range(v['Nmarkers']):
     mk_name = f.read(64).strip('\x00')
