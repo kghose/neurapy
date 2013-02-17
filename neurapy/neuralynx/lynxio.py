@@ -1,7 +1,7 @@
 """Functions to read the flotilla of files produced by the Neuralynx system."""
 
 from struct import unpack as upk, pack as pk, calcsize as csize
-import logging, pylab, binascii
+import logging, pylab
 logger = logging.getLogger(__name__)
 
 def read_header(fin):
