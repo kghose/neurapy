@@ -1,8 +1,7 @@
 """Functions to read the flotilla of files produced by the Neuralynx system."""
 
-import pylab
 from struct import unpack as upk, pack as pk, calcsize as csize
-import logging
+import logging, pylab, binascii
 logger = logging.getLogger(__name__)
 
 def read_header(fin):
@@ -162,11 +161,130 @@ def write_nse(fname, time_stamps, remarks=''):
     for ts in time_stamps:
       fout.write(pk(fmt, ts, dwScNumber, dwCellNumber, *garbage))
 
-def test_read_nse(fname='/Users/kghose/Research/2013/Projects/Workingmemory/Data/NeuraLynx/2012-10-31_12-46-18/SE2.nse'):
-  import time
-  fin = open(fname)
-  t0 = time.time()
-  data = read_nse(fin)
-  t1 = time.time()
-  print t1 - t0
-  return data
+def extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1):
+  """Read and write out selected raw traces from the .nrd file.
+  Inputs:
+    fname - name of nrd file
+    ftsname - name under which timestamp vector will be saved
+    fttlname - name under which the events will be saved
+    fchanname - a list of file names for the
+    channel_list - Which AD channels to convert.
+    channels - total channels in the system
+    max_pkts - total packets to read. If set to -1 then read all packets
+  Outputs:
+    Data are written to file
+
+  e.g.
+  ----------------------------------------------------------------------------------------------------------------------
+  from neurapy.neuralynx import lynxio
+  import logging
+  logging.basicConfig(level=logging.DEBUG)
+
+  channels = 64
+  fname = '/Users/kghose/Research/2013/Projects/Workingmemory/Data/NeuraLynx/2013-01-25_14-53-04/DigitalLynxRawDataFile.nrd'
+  channel_list = [0,1,2]
+
+  ftsname = 'timestamps.raw'
+  fttlname = 'ttl.raw'
+  fchanname = ['chan_{:000d}.raw'.format(ch) for ch in channel_list]
+  lynxio.extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels, max_pkts=1000)
+  ----------------------------------------------------------------------------------------------------------------------
+
+  Data are written as a pure stream of binary data and can be easily and efficiently read using the numpy read function.
+  For convenience, a function that reads the timestamps, events and channels (read_extracted_data) is included in the library.
+  """
+
+  #nrd packet format
+  fmt = 'iiiIIiI10i{:d}ii'.format(channels)
+  sz = csize(fmt)
+
+  #Some housekeeping things
+  bad_ts_pkt = 0
+  bad_crc_pkt = 0
+  pkt_cnt = 0
+  last_ts = 0
+
+  #The files we will write to. fixme: test for properly opened?
+  fts = open(ftsname,'wb')
+  fttl = open(fttlname,'wb')
+  fchan = [open(fcn,'wb') for fcn in fchanname]
+
+  #Main loop
+  with open(fname,'rb') as f:
+    #Read in 32bit increments until the magic number is found
+    pkt = f.read(sz)
+    while len(pkt) == sz:
+      pkt_data = upk(fmt, pkt)
+      while (pkt_data[0] != 2048) or (pkt_data[1] != 1) or (pkt_data[2] != channels+10):
+        f.seek(4-sz,1) #rewind
+        pkt = f.read(sz)
+        if len(pkt) != sz: #End of file
+          break
+        pkt_data = upk(fmt, pkt)
+
+      if len(pkt) != sz:#End of file
+        break
+
+      #Neuralynx style Checksum
+      crc = 0
+      for pd in pkt_data:
+        crc ^= pd
+      crc &= 0xffffffff
+
+      if crc != 0:#Checksum fail
+        bad_crc_pkt += 1
+        continue
+
+      ts = (pkt_data[3] << 32) | pkt_data[4] #Timestamp is bigendian
+      if ts < last_ts:#Timestamp fail
+        bad_ts_pkt += 1
+        continue
+
+      pkt_cnt += 1
+      fts.write(pkt[16:20])
+      fts.write(pkt[12:16]) #Need to flip the big-endian to small-endian for timestamps
+      fttl.write(pkt[24:28])
+      for idx,ch in enumerate(channel_list):
+        fchan[idx].write(pkt[68+ch*4:72+ch*4])
+
+      max_pkts -= 1
+      if max_pkts == 0: #This is a trick. If we start out with -1 then we never test true. If max_pkts > 0 to start, we read the correct number of packets
+        break
+
+      pkt = f.read(sz)
+
+  fts.close()
+  fttl.close()
+  [fch.close() for fch in fchan]
+
+  logger.info('Extracted {:d} packets'.format(pkt_cnt))
+  logger.info('{:d} packets had bad crc'.format(bad_crc_pkt))
+  logger.info('{:d} packets had out of order timestamps'.format(bad_ts_pkt))
+
+def read_extracted_data(fname, type='addata'):
+  """Reads data file extracted by extract_nrd.
+  Inputs:
+    fname - name of the file we want to read.
+    type  - type of the data. Has to be one of 'ts','ttl' or 'addata'
+      'ts' - time stamps which are uint64 and give values in microseconds
+      'ttl' - the parallel port input which is uint32
+      'addata' - the continuous A/D channel data which is int32
+  Output:
+    data - pylab array of appropriate type
+  """
+  if type == 'ts':
+    fmt = 'Q'
+  elif type == 'ttl':
+    fmt = 'I'
+  elif type == 'addata':
+    fmt = 'i'
+  else:
+    logger.error('Unrecognized data type {:s}'.format(type))
+    return None
+
+  fin = open(fname,'rb')
+  dtype = pylab.dtype([('trace', fmt)])
+  data = pylab.fromfile(fin, dtype=dtype, count=-1)
+  fin.close()
+
+  return data['trace']
