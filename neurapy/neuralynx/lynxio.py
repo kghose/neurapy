@@ -193,12 +193,14 @@ def extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels=64, 
   Data are written as a pure stream of binary data and can be easily and efficiently read using the numpy read function.
   For convenience, a function that reads the timestamps, events and channels (read_extracted_data) is included in the library.
   """
+  logger.info('Notice: you are using the slow version of the extractor. Full error checks are done, making extraction slow.')
 
   #nrd packet format
   fmt = 'iiiIIiI10i{:d}ii'.format(channels)
   sz = csize(fmt)
 
   #Some housekeeping things
+  packet_gap = 0
   bad_ts_pkt = 0
   bad_crc_pkt = 0
   pkt_cnt = 0
@@ -211,12 +213,16 @@ def extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels=64, 
 
   #Main loop
   with open(fname,'rb') as f:
+    hdr = read_header(f)
+    logger.info('File header: {:s}'.format(hdr))
+
     #Read in 32bit increments until the magic number is found
     pkt = f.read(sz)
     while len(pkt) == sz:
       pkt_data = upk(fmt, pkt)
       while (pkt_data[0] != 2048) or (pkt_data[1] != 1) or (pkt_data[2] != channels+10):
         f.seek(4-sz,1) #rewind
+        packet_gap += 1
         pkt = f.read(sz)
         if len(pkt) != sz: #End of file
           break
@@ -226,6 +232,8 @@ def extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels=64, 
         break
 
       #Neuralynx style Checksum
+      #The reduce is actually slower than the simple loop
+      #crc = reduce(lambda x, y: x^y, pkt_data, 0) & 0xffffffff
       crc = 0
       for pd in pkt_data:
         crc ^= pd
@@ -258,8 +266,101 @@ def extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels=64, 
   [fch.close() for fch in fchan]
 
   logger.info('Extracted {:d} packets'.format(pkt_cnt))
+  logger.info('{:d} int32s outside packets'.format(packet_gap))
   logger.info('{:d} packets had bad crc'.format(bad_crc_pkt))
   logger.info('{:d} packets had out of order timestamps'.format(bad_ts_pkt))
+
+
+def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1, buffer_size=100000):
+  """Read and write out selected raw traces from the .nrd file.
+  Inputs:
+    fname - name of nrd file
+    ftsname - name under which timestamp vector will be saved
+    fttlname - name under which the events will be saved
+    fchanname - a list of file names for the
+    channel_list - Which AD channels to convert.
+    channels - total channels in the system
+    max_pkts - total packets to read. If set to -1 then read all packets
+    buffer_size   - how many chunks to read at a time.
+  Outputs:
+    Data are written to file
+
+  e.g.
+  ----------------------------------------------------------------------------------------------------------------------
+  from neurapy.neuralynx import lynxio
+  import logging
+  logging.basicConfig(level=logging.DEBUG)
+
+  channels = 64
+  fname = '/Users/kghose/Research/2013/Projects/Workingmemory/Data/NeuraLynx/2013-01-25_14-53-04/DigitalLynxRawDataFile.nrd'
+  channel_list = [0,1,2]
+
+  ftsname = 'timestamps.raw'
+  fttlname = 'ttl.raw'
+  fchanname = ['chan_{:000d}.raw'.format(ch) for ch in channel_list]
+  lynxio.extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels, max_pkts=1000)
+  ----------------------------------------------------------------------------------------------------------------------
+
+  Data are written as a pure stream of binary data and can be easily and efficiently read using the numpy read function.
+  For convenience, a function that reads the timestamps, events and channels (read_extracted_data) is included in the library.
+
+  In my experience STX, CRC, timestamp errors and garbage bytes between packets are extremely rare in a properly working system. This function eschews any kind of checks on the data read and just converts the packets. If you suspect that your data has dropped packets, crc or other issues you should try the _slow version of this function. You can note this by looking at your Cheetah software and noting at the end of the session if you have any sort of errors.
+  """
+  logger.info('Notice: you are using the fast version of the extractor. No error checks are done')
+
+#nrd packet format
+  nrd_packet = pylab.dtype([
+    ('stx', 'i'),
+    ('pkt_id', 'i'),
+    ('pkt_data_size', 'i'),
+    ('timestamp', '>Q'), #Neuralynx timestamp is big endian
+    ('status', 'i'),
+    ('ttl', 'I'),
+    ('extra', '10i'),
+    ('data', '{:d}i'.format(channels)),
+    ('crc', 'i')
+  ])
+  #packet_size = nrd_packet.itemsize
+
+  pkt_cnt = 0
+  if buffer_size > max_pkts:
+    buffer_size = max_pkts
+
+  #The files we will write to. fixme: test for properly opened?
+  fts = open(ftsname,'wb')
+  fttl = open(fttlname,'wb')
+  fchan = [open(fcn,'wb') for fcn in fchanname]
+
+  with open(fname,'rb') as f:
+    hdr = read_header(f)
+    logger.info('File header: {:s}'.format(hdr))
+
+    #Read in 32bit increments until the magic number is found
+    pkt = f.read(4)
+    while len(pkt) == 4:
+      if pkt[1] == '\x08': #Part of magic number 2048 0x0800
+        break
+      pkt = f.read(4)
+
+    these_packets = pylab.fromfile(f, dtype=nrd_packet, count=buffer_size)
+    while these_packets.size > 0:
+      these_packets['timestamp'].tofile(fts)
+      these_packets['ttl'].tofile(fttl)
+      for idx,ch in enumerate(channel_list):
+        these_packets['data'][ch,:].tofile(fchan[idx])
+
+      pkt_cnt += these_packets.size
+      if pkt_cnt >= max_pkts: #NOTE: This may give us upto buffer_size -1 more packets than we want.
+        break
+      these_packets = pylab.fromfile(f, dtype=nrd_packet, count=buffer_size)
+
+  fts.close()
+  fttl.close()
+  [fch.close() for fch in fchan]
+
+  logger.info('Extracted {:d} packets'.format(pkt_cnt))
+
+
 
 def read_extracted_data(fname, type='addata'):
   """Reads data file extracted by extract_nrd.
