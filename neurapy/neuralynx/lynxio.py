@@ -271,7 +271,7 @@ def extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels=64, 
   logger.info('{:d} packets had out of order timestamps'.format(bad_ts_pkt))
 
 
-def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1, buffer_size=100000):
+def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1, buffer_size=1000):
   """Read and write out selected raw traces from the .nrd file.
   Inputs:
     fname - name of nrd file
