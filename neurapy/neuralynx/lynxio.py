@@ -350,8 +350,9 @@ def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels
         these_packets['data'][:,ch].tofile(fchan[idx])
 
       pkt_cnt += these_packets.size
-      if pkt_cnt >= max_pkts: #NOTE: This may give us upto buffer_size -1 more packets than we want.
-        break
+      if max_pkts != -1:
+        if pkt_cnt >= max_pkts: #NOTE: This may give us upto buffer_size -1 more packets than we want.
+         break
       these_packets = pylab.fromfile(f, dtype=nrd_packet, count=buffer_size)
 
   fts.close()
