@@ -271,7 +271,7 @@ def extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels=64, 
   logger.info('{:d} packets had out of order timestamps'.format(bad_ts_pkt))
 
 
-def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1, buffer_size=1000):
+def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1, buffer_size=10000):
   """Read and write out selected raw traces from the .nrd file.
   Inputs:
     fname - name of nrd file
@@ -347,7 +347,7 @@ def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels
       these_packets['timestamp'].tofile(fts)
       these_packets['ttl'].tofile(fttl)
       for idx,ch in enumerate(channel_list):
-        these_packets['data'][ch,:].tofile(fchan[idx])
+        these_packets['data'][:,ch].tofile(fchan[idx])
 
       pkt_cnt += these_packets.size
       if pkt_cnt >= max_pkts: #NOTE: This may give us upto buffer_size -1 more packets than we want.
