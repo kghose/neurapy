@@ -304,7 +304,7 @@ def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels
   Data are written as a pure stream of binary data and can be easily and efficiently read using the numpy read function.
   For convenience, a function that reads the timestamps, events and channels (read_extracted_data) is included in the library.
 
-  In my experience STX, CRC, timestamp errors and garbage bytes between packets are extremely rare in a properly working system. This function eschews any kind of checks on the data read and just converts the packets. If you suspect that your data has dropped packets, crc or other issues you should try the _slow version of this function. You can note this by looking at your Cheetah software and noting at the end of the session if you have any sort of errors.
+  In my experience STX, CRC, timestamp errors and garbage bytes between packets are extremely rare in a properly working system. This function eschews any kind of checks on the data read and just converts the packets. If you suspect that your data has dropped packets, crc or other issues you should try the regular version of this function. You can note if you have packet errors from your Cheetah software. This function is 20 times faster than the careful version on my system.
   """
   logger.info('Notice: you are using the fast version of the extractor. No error checks are done')
 
@@ -313,7 +313,8 @@ def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels
     ('stx', 'i'),
     ('pkt_id', 'i'),
     ('pkt_data_size', 'i'),
-    ('timestamp', '>Q'), #Neuralynx timestamp is big endian
+    ('timestamp high', 'I'), #Neuralynx timestamp is ... in its own 32 bit world
+    ('timestamp low', 'I'),
     ('status', 'i'),
     ('ttl', 'I'),
     ('extra', '10i'),
@@ -323,8 +324,9 @@ def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels
   #packet_size = nrd_packet.itemsize
 
   pkt_cnt = 0
-  if buffer_size > max_pkts:
-    buffer_size = max_pkts
+  if max_pkts != -1: #An insidious bug was killed here!
+    if buffer_size > max_pkts:
+      buffer_size = max_pkts
 
   #The files we will write to. fixme: test for properly opened?
   fts = open(ftsname,'wb')
@@ -339,12 +341,15 @@ def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels
     pkt = f.read(4)
     while len(pkt) == 4:
       if pkt[1] == '\x08': #Part of magic number 2048 0x0800
+        f.seek(-4,1) #Realign
         break
       pkt = f.read(4)
 
     these_packets = pylab.fromfile(f, dtype=nrd_packet, count=buffer_size)
     while these_packets.size > 0:
-      these_packets['timestamp'].tofile(fts)
+      #ts = pylab.array((these_packets['timestamp high']<<32) + (these_packets['timestamp low']) & 0xffffffffffffffff, dtype='uint64')
+      ts = pylab.array((these_packets['timestamp high']<<32) | (these_packets['timestamp low']), dtype='uint64')
+      ts.tofile(fts)
       these_packets['ttl'].tofile(fttl)
       for idx,ch in enumerate(channel_list):
         these_packets['data'][:,ch].tofile(fchan[idx])
