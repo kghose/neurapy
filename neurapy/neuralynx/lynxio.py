@@ -387,7 +387,7 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
 
       #crc computation
       field32 = pylab.vstack([these_packets[k].T for k in nrd_packet.fields.keys()]).astype('I')
-      crc = pylab.zeros(max_good_packets,dtype='I')
+      crc = pylab.zeros(these_packets.size,dtype='I')
       for idx in xrange(field32.shape[0]):
         crc ^= field32[idx,:]
       idx = pylab.find(crc != 0)
