@@ -413,6 +413,8 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
         these_packets = these_packets[:max_good_packets]
         ts = ts[:max_good_packets]
 
+      last_ts = ts[-1] #Ready for the next read
+
       ts.tofile(fts)
       these_packets['ttl'].tofile(fttl)
       for idx,ch in enumerate(channel_list):
