@@ -271,6 +271,178 @@ def extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels=64, 
   logger.info('{:d} packets had out of order timestamps'.format(bad_ts_pkt))
 
 
+def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1, buffer_size=10000):
+  """Read and write out selected raw traces from the .nrd file with error checking.
+  Inputs:
+    fname - name of nrd file
+    ftsname - name under which timestamp vector will be saved
+    fttlname - name under which the events will be saved
+    fchanname - a list of file names for the
+    channel_list - Which AD channels to convert.
+    channels - total channels in the system
+    max_pkts - total packets to read. If set to -1 then read all packets
+    buffer_size   - how many chunks to read at a time.
+  Outputs:
+    Data are written to file
+
+  e.g.
+  ----------------------------------------------------------------------------------------------------------------------
+  from neurapy.neuralynx import lynxio
+  import logging
+  logging.basicConfig(level=logging.DEBUG)
+
+  channels = 64
+  fname = '/Users/kghose/Research/2013/Projects/Workingmemory/Data/NeuraLynx/2013-01-25_14-53-04/DigitalLynxRawDataFile.nrd'
+  channel_list = [0,1,2]
+
+  ftsname = 'timestamps.raw'
+  fttlname = 'ttl.raw'
+  fchanname = ['chan_{:000d}.raw'.format(ch) for ch in channel_list]
+  lynxio.extract_nrd(fname, ftsname, fttlname, fchanname, channel_list, channels, max_pkts=1000)
+  ----------------------------------------------------------------------------------------------------------------------
+
+  Data are written as a pure stream of binary data and can be easily and efficiently read using the numpy read function.
+  For convenience, a function that reads the timestamps, events and channels (read_extracted_data) is included in the library.
+
+  In my experience STX, CRC, timestamp errors and garbage bytes between packets are extremely rare in a properly working system. This function eschews any kind of checks on the data read and just converts the packets. If you suspect that your data has dropped packets, crc or other issues you should try the regular version of this function. You can note if you have packet errors from your Cheetah software. This function is 20 times faster than the careful version on my system.
+  """
+  def seek_packet(f):
+    """Skip forward until we find the STX magic number."""
+    #Read in 32bit increments until the magic number is found
+    start = f.tell()
+    pkt = f.read(4)
+    while len(pkt) == 4:
+      if pkt[1] == '\x08': #Part of magic number 2048 0x0800
+        f.seek(-4,1) #Realign
+        break
+      pkt = f.read(4)
+    stop = f.tell()
+    return stop - start
+
+  logger.info('Notice: you are using the slow version of the extractor. All error checks are done')
+
+  #nrd packet format
+  nrd_packet = pylab.dtype([
+    ('stx', 'i'),
+    ('pkt_id', 'i'),
+    ('pkt_data_size', 'i'),
+    ('timestamp high', 'I'), #Neuralynx timestamp is ... in its own 32 bit world
+    ('timestamp low', 'I'),
+    ('status', 'i'),
+    ('ttl', 'I'),
+    ('extra', '10i'),
+    ('data', '{:d}i'.format(channels)),
+    ('crc', 'i')
+  ])
+  packet_size = nrd_packet.itemsize
+
+  pkt_cnt = 0
+  garbage_bytes = 0
+  stx_err_cnt = 0
+  pkt_id_err_cnt = 0
+  pkt_size_err_cnt = 0
+  pkt_ts_err_cnt = 0
+  pkt_crc_err_cnt = 0
+
+  if max_pkts != -1: #An insidious bug was killed here!
+    if buffer_size > max_pkts:
+      buffer_size = max_pkts
+
+  #The files we will write to. fixme: test for properly opened?
+  fts = open(ftsname,'wb')
+  fttl = open(fttlname,'wb')
+  fchan = [open(fcn,'wb') for fcn in fchanname]
+
+  last_ts = 0
+  with open(fname,'rb') as f:
+    hdr = read_header(f)
+    logger.info('File header: {:s}'.format(hdr))
+
+    garbage_bytes += seek_packet(f)
+    these_packets = pylab.fromfile(f, dtype=nrd_packet, count=buffer_size)
+    while these_packets.size > 0:
+      all_packets_good = True
+      packets_read = these_packets.size
+
+      idx = pylab.find(these_packets['stx'] != 2048)
+      if idx.size > 0:
+        stx_err_cnt += 1
+        all_packets_good = False
+        max_good_packets = idx[0]
+        these_packets = these_packets[:max_good_packets]
+
+      idx = pylab.find(these_packets['pkt_id'] != 1)
+      if idx.size > 0:
+        pkt_id_err_cnt += 1
+        all_packets_good = False
+        max_good_packets = idx[0]
+        these_packets = these_packets[:max_good_packets]
+
+      idx = pylab.find(these_packets['pkt_data_size'] != 10 + channels)
+      if idx.size > 0:
+        pkt_size_err_cnt += 1
+        all_packets_good = False
+        max_good_packets = idx[0]
+        these_packets = these_packets[:max_good_packets]
+
+      #crc computation
+      field32 = pylab.vstack([these_packets[k].T for k in nrd_packet.fields.keys()]).astype('I')
+      crc = pylab.zeros(max_good_packets,dtype='I')
+      for idx in xrange(field32.shape[0]):
+        crc ^= field32[idx,:]
+      idx = pylab.find(crc != 0)
+      if idx.size > 0:
+        pkt_crc_err_cnt += 1
+        all_packets_good = False
+        max_good_packets = idx[0]
+        these_packets = these_packets[:max_good_packets]
+
+      ts = pylab.array((these_packets['timestamp high']<<32) | (these_packets['timestamp low']), dtype='uint64')
+      buffer_boundary_ts_diff = ts[0] - last_ts
+      bad_idx = -1
+      if buffer_boundary_ts_diff < 0:
+        bad_idx = 0
+      else:
+        idx = pylab.find(pylab.diff(ts) < 0)
+        if idx.size > 0:
+          bad_idx = idx[0] + 1
+      if bad_idx > -1:
+        pkt_ts_err_cnt += 1
+        all_packets_good = False
+        max_good_packets = bad_idx
+        these_packets = these_packets[:max_good_packets]
+        ts = ts[:max_good_packets]
+
+      ts.tofile(fts)
+      these_packets['ttl'].tofile(fttl)
+      for idx,ch in enumerate(channel_list):
+        these_packets['data'][:,ch].tofile(fchan[idx])
+
+      pkt_cnt += these_packets.size
+      if max_pkts != -1:
+        if pkt_cnt >= max_pkts: #NOTE: This may give us upto buffer_size -1 more packets than we want.
+          break
+
+      if not all_packets_good:
+        f.seek((these_packets.size-packets_read)*packet_size+4,1) #Rewind all the way except 32 bits
+        garbage_bytes += seek_packet(f)
+
+      these_packets = pylab.fromfile(f, dtype=nrd_packet, count=buffer_size)
+
+  fts.close()
+  fttl.close()
+  [fch.close() for fch in fchan]
+
+  logger.info('Extracted {:d} packets'.format(pkt_cnt))
+  logger.info('{:d} garbage words'.format(garbage_bytes))
+  logger.info('{:d} packets had bad stx'.format(stx_err_cnt))
+  logger.info('{:d} packets had bad pkt id'.format(pkt_id_err_cnt))
+  logger.info('{:d} packets had bad crc'.format(pkt_crc_err_cnt))
+  logger.info('{:d} packets had out of order timestamps'.format(pkt_ts_err_cnt))
+
+
+
+
 def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1, buffer_size=10000):
   """Read and write out selected raw traces from the .nrd file.
   Inputs:
