@@ -304,7 +304,6 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
   Data are written as a pure stream of binary data and can be easily and efficiently read using the numpy read function.
   For convenience, a function that reads the timestamps, events and channels (read_extracted_data) is included in the library.
 
-  In my experience STX, CRC, timestamp errors and garbage bytes between packets are extremely rare in a properly working system. This function eschews any kind of checks on the data read and just converts the packets. If you suspect that your data has dropped packets, crc or other issues you should try the regular version of this function. You can note if you have packet errors from your Cheetah software. This function is 20 times faster than the careful version on my system.
   """
   def seek_packet(f):
     """Skip forward until we find the STX magic number."""
@@ -564,8 +563,7 @@ def read_extracted_data(fname, type='addata'):
     return None
 
   fin = open(fname,'rb')
-  dtype = pylab.dtype([('trace', fmt)])
-  data = pylab.fromfile(fin, dtype=dtype, count=-1)
+  data = pylab.fromfile(fin, dtype=fmt, count=-1)
   fin.close()
 
-  return data['trace']
+  return data
