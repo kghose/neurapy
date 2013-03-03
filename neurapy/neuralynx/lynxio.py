@@ -311,7 +311,7 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
     start = f.tell()
     pkt = f.read(4)
     while len(pkt) == 4:
-      if pkt[1] == '\x08': #Part of magic number 2048 0x0800
+      if pkt == '\x00\x08\x00\x00': #Magic number 2048 0x0800
         f.seek(-4,1) #Realign
         break
       pkt = f.read(4)
@@ -347,7 +347,7 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
     if buffer_size > max_pkts:
       buffer_size = max_pkts
 
-  #The files we will write to. fixme: test for properly opened?
+  #The files we will write to.
   fts = open(ftsname,'wb')
   fttl = open(fttlname,'wb')
   fchan = [open(fcn,'wb') for fcn in fchanname]
@@ -513,7 +513,7 @@ def extract_nrd_fast(fname, ftsname, fttlname, fchanname, channel_list, channels
     #Read in 32bit increments until the magic number is found
     pkt = f.read(4)
     while len(pkt) == 4:
-      if pkt[1] == '\x08': #Part of magic number 2048 0x0800
+      if pkt == '\x00\x08\x00\x00': #Magic number 2048 0x0800
         f.seek(-4,1) #Realign
         break
       pkt = f.read(4)
