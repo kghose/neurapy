@@ -287,7 +287,7 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
         max_good_packets = idx[0]
         these_packets = these_packets[:max_good_packets]
 
-      if max_good_packets > 0:
+      if these_packets.size > 0:
         ts = pylab.array((these_packets['timestamp high']<<32) | (these_packets['timestamp low']), dtype='uint64')
         buffer_boundary_ts_diff = ts[0] - last_ts
         bad_idx = -1
