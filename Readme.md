@@ -6,7 +6,7 @@ is a collection of python modules useful for analyzing data obtained in neurophy
 * lablib - a module for loading [lablib][lablib] data files
 * monkeylogic - a module for loading data files saved by the [MonkeyLogic][ml] program
 * neuralynx - a module for reading files produced by [neuralynx][nl] boxes
-* plexon - a module for loading .nex and .plx files produced by the Plexon [Map][map] system
+* neuroexplorer - reads/writes .nex files for the neuroexplorer/offline sorter programs
 
 [lablib]: http://maunsell.med.harvard.edu/software.html
 [ml]: http://www.monkeylogic.net/
