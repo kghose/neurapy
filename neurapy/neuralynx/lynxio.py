@@ -243,7 +243,7 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
   fttl = open(fttlname,'wb')
   fchan = [open(fcn,'wb') for fcn in fchanname]
 
-  last_ts = 0
+  last_ts = 0L
   with open(fname,'rb') as f:
     hdr = read_header(f)
     logger.info('File header: {:s}'.format(hdr))
