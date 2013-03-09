@@ -287,28 +287,29 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
         max_good_packets = idx[0]
         these_packets = these_packets[:max_good_packets]
 
-      ts = pylab.array((these_packets['timestamp high']<<32) | (these_packets['timestamp low']), dtype='uint64')
-      buffer_boundary_ts_diff = ts[0] - last_ts
-      bad_idx = -1
-      if buffer_boundary_ts_diff < 0:
-        bad_idx = 0
-      else:
-        idx = pylab.find(pylab.diff(ts) < 0)
-        if idx.size > 0:
-          bad_idx = idx[0] + 1
-      if bad_idx > -1:
-        pkt_ts_err_cnt += 1
-        all_packets_good = False
-        max_good_packets = bad_idx
-        these_packets = these_packets[:max_good_packets]
-        ts = ts[:max_good_packets]
+      if max_good_packets > 0:
+        ts = pylab.array((these_packets['timestamp high']<<32) | (these_packets['timestamp low']), dtype='uint64')
+        buffer_boundary_ts_diff = ts[0] - last_ts
+        bad_idx = -1
+        if buffer_boundary_ts_diff < 0:
+          bad_idx = 0
+        else:
+          idx = pylab.find(pylab.diff(ts) < 0)
+          if idx.size > 0:
+            bad_idx = idx[0] + 1
+        if bad_idx > -1:
+          pkt_ts_err_cnt += 1
+          all_packets_good = False
+          max_good_packets = bad_idx
+          these_packets = these_packets[:max_good_packets]
+          ts = ts[:max_good_packets]
 
-      last_ts = ts[-1] #Ready for the next read
+        last_ts = ts[-1] #Ready for the next read
 
-      ts.tofile(fts)
-      these_packets['ttl'].tofile(fttl)
-      for idx,ch in enumerate(channel_list):
-        these_packets['data'][:,ch].tofile(fchan[idx])
+        ts.tofile(fts)
+        these_packets['ttl'].tofile(fttl)
+        for idx,ch in enumerate(channel_list):
+          these_packets['data'][:,ch].tofile(fchan[idx])
 
       pkt_cnt += these_packets.size
       if max_pkts != -1:
