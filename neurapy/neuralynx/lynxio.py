@@ -241,31 +241,34 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
         max_good_packets = idx[0]
         these_packets = these_packets[:max_good_packets]
 
-      idx = pylab.find(these_packets['pkt_id'] != 1)
-      if idx.size > 0:
-        pkt_id_err_cnt += 1
-        all_packets_good = False
-        max_good_packets = idx[0]
-        these_packets = these_packets[:max_good_packets]
+      if these_packets.size > 0:
+        idx = pylab.find(these_packets['pkt_id'] != 1)
+        if idx.size > 0:
+          pkt_id_err_cnt += 1
+          all_packets_good = False
+          max_good_packets = idx[0]
+          these_packets = these_packets[:max_good_packets]
 
-      idx = pylab.find(these_packets['pkt_data_size'] != 10 + channels)
-      if idx.size > 0:
-        pkt_size_err_cnt += 1
-        all_packets_good = False
-        max_good_packets = idx[0]
-        these_packets = these_packets[:max_good_packets]
+      if these_packets.size > 0:
+        idx = pylab.find(these_packets['pkt_data_size'] != 10 + channels)
+        if idx.size > 0:
+          pkt_size_err_cnt += 1
+          all_packets_good = False
+          max_good_packets = idx[0]
+          these_packets = these_packets[:max_good_packets]
 
-      #crc computation
-      field32 = pylab.vstack([these_packets[k].T for k in nrd_packet.fields.keys()]).astype('I')
-      crc = pylab.zeros(these_packets.size,dtype='I')
-      for idx in xrange(field32.shape[0]):
-        crc ^= field32[idx,:]
-      idx = pylab.find(crc != 0)
-      if idx.size > 0:
-        pkt_crc_err_cnt += 1
-        all_packets_good = False
-        max_good_packets = idx[0]
-        these_packets = these_packets[:max_good_packets]
+      if these_packets.size > 0:
+        #crc computation
+        field32 = pylab.vstack([these_packets[k].T for k in nrd_packet.fields.keys()]).astype('I')
+        crc = pylab.zeros(these_packets.size,dtype='I')
+        for idx in xrange(field32.shape[0]):
+          crc ^= field32[idx,:]
+        idx = pylab.find(crc != 0)
+        if idx.size > 0:
+          pkt_crc_err_cnt += 1
+          all_packets_good = False
+          max_good_packets = idx[0]
+          these_packets = these_packets[:max_good_packets]
 
       if these_packets.size > 0:
         ts = pylab.array((these_packets['timestamp high']<<32) | (these_packets['timestamp low']), dtype='uint64')
@@ -283,12 +286,12 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
           these_packets = these_packets[:max_good_packets]
           ts = ts[:max_good_packets]
 
-        if these_packets.size > 0:
-          last_ts = ts[-1] #Ready for the next read
-          ts.tofile(fts)
-          these_packets['ttl'].tofile(fttl)
-          for idx,ch in enumerate(channel_list):
-            these_packets['data'][:,ch].tofile(fchan[idx])
+      if these_packets.size > 0:
+        last_ts = ts[-1] #Ready for the next read
+        ts.tofile(fts)
+        these_packets['ttl'].tofile(fttl)
+        for idx,ch in enumerate(channel_list):
+          these_packets['data'][:,ch].tofile(fchan[idx])
 
       pkt_cnt += these_packets.size
       if max_pkts != -1:
