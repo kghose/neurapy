@@ -272,7 +272,7 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
           these_packets = these_packets[:max_good_packets]
 
       if these_packets.size > 0:
-        ts = pylab.array((these_packets['timestamp high']<<32) | (these_packets['timestamp low']), dtype='uint64')
+        ts = pylab.array((these_packets['timestamp high'].astype('uint64')<<32) | (these_packets['timestamp low']), dtype='uint64')
         bad_idx = -1
         if last_ts > ts[0]:#Time stamps out of order at buffer boundary
           bad_idx = 0
