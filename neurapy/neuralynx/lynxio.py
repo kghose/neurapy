@@ -142,7 +142,7 @@ def write_nse(fname, time_stamps, remarks=''):
       fout.write(pk(fmt, ts, dwScNumber, dwCellNumber, *garbage))
 
 
-def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1, buffer_size=10000):
+def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=64, max_pkts=-1, buffer_size=10000, error_bugout=1000000000):
   """Read and write out selected raw traces from the .nrd file with error checking.
   Inputs:
     fname - name of nrd file
@@ -153,6 +153,7 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
     channels - total channels in the system
     max_pkts - total packets to read. If set to -1 then read all packets
     buffer_size   - how many chunks to read at a time.
+    error_bugout - If the sum of stx, crc and timestamp errors exceed this value quit reading the file
   Outputs:
     Data are written to file
 
@@ -280,6 +281,7 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
           if idx.size > 0:
             bad_idx = idx[0] + 1
         if bad_idx > -1:
+          logger.info('Out of order timestamp {:d}'.format(ts[bad_idx]))
           pkt_ts_err_cnt += 1
           all_packets_good = False
           max_good_packets = bad_idx
@@ -301,6 +303,10 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
       if not all_packets_good:
         f.seek((these_packets.size-packets_read)*packet_size+4,1) #Rewind all the way except 32 bits
         garbage_bytes += seek_packet(f)
+
+      if pkt_ts_err_cnt + pkt_crc_err_cnt + stx_err_cnt > error_bugout:
+        logger.warning('Too many errors, bugging out')
+        break
 
       these_packets = pylab.fromfile(f, dtype=nrd_packet, count=buffer_size)
 
