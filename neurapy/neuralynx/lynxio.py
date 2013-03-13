@@ -281,7 +281,7 @@ def extract_nrd_ec(fname, ftsname, fttlname, fchanname, channel_list, channels=6
           if idx.size > 0:
             bad_idx = idx[0] + 1
         if bad_idx > -1:
-          logger.info('Out of order timestamp {:d}'.format(ts[bad_idx]))
+          logger.info('Out of order timestamp {:d}'.format(int(ts[bad_idx])))
           pkt_ts_err_cnt += 1
           all_packets_good = False
           max_good_packets = bad_idx
