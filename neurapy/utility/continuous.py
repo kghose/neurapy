@@ -9,7 +9,7 @@ def filtfiltlong(finname, foutname, fmt, b, a, buffer_len=100000, overlap_len=10
   Inputs:
     finname -
     foutname    -
-    fmt         - data format eg 'int32'
+    fmt         - data format eg 'i'
     b,a         - filter coefficients
     buffer_len  - how much data to process at a time
     overlap_len - how much data do we add to the end of each chunk to smooth out filter transients
@@ -23,12 +23,15 @@ def filtfiltlong(finname, foutname, fmt, b, a, buffer_len=100000, overlap_len=10
     2. The filtering is done in chunks:
 
     Chunking details:
-                |<----- buffer------>|
-    -----[------*--------------------*------]-------
-         |<--------- chunk ---------------->|
 
-    From the array of data we cut out contiguous buffers and to each buffer we add some extra overlap to make a chunk
-    The first chunk starts at the first buffer and the last chunk ends at the last buffer
+                |<------- b1 ------->||<------- b2 ------->|
+    -----[------*--------------{-----*------]--------------*------}----------
+         |<-------------- c1 -------------->|
+                               |<-------------- c2 -------------->|
+
+    From the array of data we cut out contiguous buffers (b1,b2,...) and to each buffer we add some extra overlap to
+    make chunks (c1,c2). The overlap helps to remove the transients from the filtering which would otherwise appear at
+    each buffer boundary.
 
   """
   x = pylab.memmap(finname, dtype=fmt, mode='r')
@@ -46,6 +49,10 @@ def filtfiltlong(finname, foutname, fmt, b, a, buffer_len=100000, overlap_len=10
     y[buff_st_idx:buff_nd_idx] = this_y_chk[rel_st_idx:rel_nd_idx]
 
   return y
+
+
+
+
 
 
 
