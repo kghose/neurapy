@@ -67,7 +67,7 @@ class ODSReader:
 
     self.SHEETS[name] = pylab.array(arrRows, dtype='str') #This allows us to slice the table efficiently and do finds on it
 
-  # returns a sheet as an array (rows) of arrays (columns)
   def getSheet(self, name):
+    """Returns a sheet as an row x col pylab array"""
     return self.SHEETS[name]
 
