@@ -1,26 +1,10 @@
-This contains a bunch of modules for the further processing of neural/behavioral data
+This package contains miscellaneous useful modules
+--------------------------------------------------
 
-Organisation of neural/behavioral data
-======================================
+odsrd - contains a very simple reader that wraps odfpy to allow us to read .ods documents.
 
+spikes - contains various functions to analyse point data such as spikes
 
+continuous - functions to process and analyze continuous data, such as LFPs and other raw traces.
 
-
-
-
-Neural database
-===============
-This is not a database
-
-
-
-
-
-
-
-stats.py
---------
-This module contains some elementary statistical functions:
-
-bin_confint - confidence intervals for bernoulli (binary) trials using bootstrapping
-boot_confint - Generic bootstrapped confidence intervals
+stats.py - contains some elementary statistical functions:
