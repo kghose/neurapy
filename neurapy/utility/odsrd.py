@@ -18,27 +18,26 @@ class ODSReader:
   def __init__(self, file):
     """Read metadata from file."""
     self.doc = odf.opendocument.load(file)
-    self.SHEETS = {}
-    self.__TABLEELEMENT__ = {}
+    self.sheets = {}
+    self.__table_element__ = {}
     for sheet in self.doc.spreadsheet.getElementsByType(Table):
-      self.prepareSheet(sheet)
+      self.prepare_sheet(sheet)
 
-  def prepareSheet(self, sheet):
+  def prepare_sheet(self, sheet):
     """Read the sheet name and put it in the list."""
     name = sheet.getAttribute("name")
-    self.SHEETS[name] = None
-    self.__TABLEELEMENT__[name] = sheet
+    self.sheets[name] = None
+    self.__table_element__[name] = sheet
 
   def sheet_by_name(self, name):
     """Return a sheet to us. Load on demand. Load if not already loaded"""
-    if self.SHEETS[name] is None:
-      self.readSheet(self.__TABLEELEMENT__[name])
-    return self.SHEETS[name]
+    if self.sheets[name] is None:
+      self.read_sheet(self.__table_element__[name])
+    return self.sheets[name]
 
 
-  def readSheet(self, sheet):
+  def read_sheet(self, sheet):
     """On demand, actually read a sheet and return it to us."""
-    name = sheet.getAttribute("name")
     rows = sheet.getElementsByType(TableRow)
     arrRows = []
     join = ''.join
@@ -65,9 +64,10 @@ class ODSReader:
       else:
         arrRows += [arrCells] * int(rrpt)
 
-    self.SHEETS[name] = pylab.array(arrRows, dtype='str') #This allows us to slice the table efficiently and do finds on it
+    name = sheet.getAttribute("name")
+    self.sheets[name] = pylab.array(arrRows, dtype='str') #This allows us to slice the table efficiently and do finds on it
 
-  def getSheet(self, name):
+  def get_sheet(self, name):
     """Returns a sheet as an row x col pylab array"""
     return self.SHEETS[name]
 
