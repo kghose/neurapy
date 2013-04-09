@@ -1,5 +1,22 @@
-"""Some methods for analysing spike trains."""
+"""Some methods for loading and analysing spike trains."""
 import pylab
+
+def load_spikes_csv(spikefname, ch, unit):
+  """
+  Load the spike timestamps from a csv file. The file is expected to have three columns: channel, unit and timestamp
+  (This is the default format that data is exported in from Plexon's offline sorter)
+
+  Inputs:
+    spikefname     - name of csv file
+    ch             - channel number
+    unit           - unit number
+  Outputs:
+    array          - pylab array of timestamps
+  """
+  sdata = pylab.csv2rec(spikefname, names=['channel','unit','timestamp'])
+  idx = pylab.find((sdata['channel'] == ch) & (sdata['unit'] == unit))
+  return sdata['timestamp'][idx]
+
 
 def poisson_train(rate, duration):
   """Return time stamps from a simulated poisson process at given rate and over given duration. The granularity is 1ms.
@@ -30,6 +47,26 @@ def correlated_poisson_train(rate, duration, r):
     Array of time stamps in s
   """
 
+def section_spike_train(timestamps, start_times, zero_times, end_times):
+  """Break up a spike train into sections based on the times passed.
+
+  Inputs:
+    Note: all time units should be in the same units as the timestamp time units
+
+    timestamps  - timestamps of the spikes
+    start_times - z x 1 Array of absolute start times
+    zero_times  - z x 1 Array of absolute reference times
+    end_times   - z x 1 Array of absolute end times
+
+  Output:
+    sections    - List of z arrays containing timestamps references to the zero_times
+  """
+  sections = [None] * len(zero_times)
+  for n, (st,zt,et) in enumerate(zip(start_times, zero_times, end_times)):
+    idx = pylab.find((timestamps > st) & (timestamps < et))
+    sections[n] = timestamps[idx] - zt
+
+  return sections
 
 
 def window_spike_train(timestamps, start_time=0, zero_times=0, end_time=None, window_len=1, subwindow_len=None):
@@ -43,7 +80,9 @@ def window_spike_train(timestamps, start_time=0, zero_times=0, end_time=None, wi
 
 
   Inputs:
-    Note: all time units should be in the same units as the timestamp time units
+    Note:
+      1. All time units should be in the same units as the timestamp time units
+      2. The zero_times should be in ascending order, otherwise the results will be wrong. The algorithm is made efficient by marching along the timestamps sequentially.
 
     timestamps - timestamps of the spikes
     start_time - time rel to zero_time we end our windows (needs to be <= 0).
@@ -140,6 +179,43 @@ def window_spike_train(timestamps, start_time=0, zero_times=0, end_time=None, wi
 
   return window_edges, all_windows, all_subwindows
 
+def psth(timestamps, start_time=0, zero_times=0, end_time=None, bin_len=1):
+  """Given the time stamps compute the peristimulus time histogram giving mean spikes per bin per epoch. The rate, of
+  course, is simply the mean spike count divided by the bin size
+  Inputs:
+    timestamps - the spike timestamps
+    start_time - time rel to zero_time we end our windows (needs to be <= 0).
+                 If zero, means no pre windows.
+                 If None, means prewindows stretch to begining of data
+                 The start_time is extended to include an integer number of bins
+    zero_times  - reference time. Can be a zx1 array, in which case will give us an array of windows. If scalar
+                 will only give one set of windows.
+    end_time   - time rel to zero_time we end our windows (needs to >= 0)
+                 If zero, means no post-windows
+                 If None, means post-windows stretch to end of data
+                 The end_time is extended to include an integer number of bins
+    bin_len    - size of bin
+  Outputs:
+    t - time vector
+    be - bin edges
+    meanhist - mean spike count/bin/epoch
+    stdhist  - sd of the spike count/bin/epoch
+    ratehist - meanhist/bin_len
+
+  Can be plotted by doing pylab.plot(t, meanhist)
+  """
+  window_edges, windows, subwindows = window_spike_train(timestamps, start_time, zero_times, end_time, window_len=bin_len)
+  bins = pylab.linspace(0, range, nbins+1) #We are doing bin edges
+
+  isihist = pylab.zeros((windows.shape[1], nbins))
+  for m in xrange(windows.shape[0]):
+    for n in xrange(windows.shape[1]):
+      hist,be = pylab.histogram(isi[windows[m,n,0]:windows[m,n,1]], bins, density=True)
+      isihist[n,:] += hist
+
+  t = (window_edges[1:] + window_edges[:-1])/2
+  return t, be, isihist/windows.shape[0]
+
 
 def isi_histogram(timestamps, start_time=0, zero_times=0, end_time=None, window_len=1, range=.2, nbins=11):
   """Given the time stamps compute the isi histogram with a jumping window.
@@ -187,7 +263,17 @@ def spikecv(timestamps, start_time=0, zero_times=0, end_time=None, window_len=.1
   Returns cv and rate as an array.
   Inputs:
     timestamps - the spike timestamps
-    window_len - length of window to look at isi (in same units as time stamps)
+    start_time - time rel to zero_time we end our windows (needs to be <= 0).
+                 If zero, means no pre windows.
+                 If None, means prewindows stretch to begining of data
+                 The start_time is extended to include an integer number of windows
+    zero_times  - reference time. Can be a zx1 array, in which case will give us an array of windows. If scalar
+                 will only give one set of windows.
+    end_time   - time rel to zero_time we end our windows (needs to >= 0)
+                 If zero, means no post-windows
+                 If None, means post-windows stretch to end of data
+                 The end_time is extended to include an integer number of windows
+    window_len - length of window to look at spikes (in same units as time stamps)
 
   Outputs:
     t  - time of the center of the window
