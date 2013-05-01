@@ -8,10 +8,13 @@ def read_header(fin):
   """Standard 16 kB header."""
   return fin.read(16*1024).strip('\00')
 
-def read_csc(fin):
-  """Read a continuous record file.
+def read_csc(fin, assume_same_fs=True):
+  """Read a continuous record file. We return the raw packets but, in addition, if we set assume_same_fs as true we
+  return a trace with all the data concatenated together, assuming that a constant sampling frequency was maintained
+  through out. Gaps in the record are padded with zeros.
   Input:
     fin - file handle
+    assume_same_fs - if True, concatenate any segments together, fill time gaps with zeros and return average Fs
   Ouput:
     Dictionary with fields
       'header' - the file header
@@ -39,9 +42,37 @@ def read_csc(fin):
   ])
 
   data = pylab.fromfile(fin, dtype=csc_packet, count=-1)
-  avgFs = (data['Ns'][:-1]/(pylab.diff(data['timestamp'])*1e-6)).mean() #This will be incorrect if the trace has pauses
-  trace = data['samp'].ravel()
-  return {'header': hdr, 'packets': data, 'Fs': avgFs, 'trace': trace, 't0': data['timestamp'][0]}
+  Fs = None
+  trace = None
+  if assume_same_fs:
+    if data['Fs'].std() > 1e-6: #
+      logger.warning('Fs is not fixed across trace, not packing packets together')
+      assume_same_fs = False
+
+  if assume_same_fs:
+    samp = data['samp']
+    Fs = data['Fs'][0]
+    Ts = 1./Fs #Sample time
+    packet_duration = 512*Ts*1e6
+    ts = data['timestamp']
+    dt = pylab.diff(ts).astype('f')
+    idx = pylab.find(dt > packet_duration) #This will find any instances where we paused the recording
+    if idx.size == 0:#No padding needed
+      trace = samp.ravel()
+    else: #We have some padding to do.
+      logger.debug('Gaps in record, padding (packet duration = {:d} ms)'.format(int(packet_duration*1e-3)))
+      idx += 1 #Shifting indexes to point at the packets that come after a gap
+      idx = pylab.append(idx,data.size)#The end part
+      trace = samp[:idx[0]].ravel()#Start
+      for n in xrange(idx.size-1): #Need to pad as many times as there are gaps
+        deltaT = ts[idx[n]] - ts[idx[n]-1]
+        logger.debug('Gaps after packet {:d} ({:d} ms) : {:d} ms'.format(idx[n]-1, int(ts[idx[n]-1]), int(deltaT*1e-3)))
+        Npad = int(Fs*(deltaT - packet_duration)*1e-6)
+        pad = pylab.zeros(Npad)
+        logger.debug('Padding {:d} zeros at sample {:d}'.format(Npad, trace.size))
+        trace = pylab.concatenate((trace,pad,samp[idx[n]:idx[n+1]].ravel())) #From this packet to the packet before the gap
+
+  return {'header': hdr, 'packets': data, 'Fs': Fs, 'trace': trace, 't0': data['timestamp'][0]}
 
 
 def read_nev(fin, parse_event_string=False):
@@ -443,8 +474,4 @@ def read_extracted_data(fname, type='addata'):
     logger.error('Unrecognized data type {:s}'.format(type))
     return None
 
-  fin = open(fname,'rb')
-  data = pylab.fromfile(fin, dtype=fmt, count=-1)
-  fin.close()
-
-  return data
+  return pylab.memmap(fname, dtype=fmt, mode='r')
