@@ -2,7 +2,42 @@
 annoyingly large. So all the methods here work on buffered input, using memory maps.
 """
 import pylab
-from scipy.signal import filtfilt
+from scipy.signal import filtfilt, iirdesign
+
+#Some useful presets for loading continuous data
+lynxlfp = {
+  'fmt': 'i',
+  'fs' : 32556,
+  'fl' : 5,
+  'fh' : 100,
+  'buffer_len' : 100000,
+  'overlap_len': 100,
+  'max_len': -1
+}
+
+lynxspike = {
+  'fmt': 'i',
+  'fs' : 32556,
+  'fl' : 500,
+  'fh' : 8000,
+  'buffer_len' : 100000,
+  'overlap_len': 100,
+  'max_len': -1
+}
+"""Use these presets as follows
+
+from neurapy.utility import continuous as cc
+y,b,a = cc.butterfilt('chan_000.raw', 'test.raw', **cc.lynxlfp)"""
+
+
+def butterfilt(finname, foutname, fmt, fs, fl=5.0, fh=100.0, buffer_len=100000, overlap_len=100, max_len=-1):
+  """Given sampling frequency, low and high pass frequencies design a butterworth filter and filter our data with it."""
+  fso2 = fs/2.0
+  wp = [fl/fso2, fh/fso2]
+  ws = [0.8*fl/fso2,1.2*fh/fso2]
+  b, a = iirdesign(wp, ws, gpass=2.0, gstop=30.0, ftype='butter', output='ba')
+  y = filtfiltlong(finname, foutname, fmt, b, a, buffer_len, overlap_len, max_len)
+  return y, b, a
 
 def filtfiltlong(finname, foutname, fmt, b, a, buffer_len=100000, overlap_len=100, max_len=-1):
   """Use memmap and chunking to filter continuous data.
@@ -49,10 +84,3 @@ def filtfiltlong(finname, foutname, fmt, b, a, buffer_len=100000, overlap_len=10
     y[buff_st_idx:buff_nd_idx] = this_y_chk[rel_st_idx:rel_nd_idx]
 
   return y
-
-
-
-
-
-
-
