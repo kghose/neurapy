@@ -78,7 +78,9 @@ class VisualizeFilter:
     print 'b = ', pylab.array_repr(b)
     print 'a = ', pylab.array_repr(a)
 
-    w, h = freqz(b, a)
+    my_w = pylab.logspace(pylab.log10(.1*self.ws[0]), 0.0, num=512)
+    #import pdb;pdb.set_trace()
+    w, h = freqz(b, a, worN=my_w*pylab.pi)
     gp = 10**(-gpass/20.)#Go from db to regular
     gs = 10**(-gstop/20.)
     self.design_line, = ax.plot([.1*self.ws[0], self.ws[0], wp[0], wp[1], ws[1], 1.0], [gs, gs, gp, gp, gs, gs], 'ko:', lw=2, picker=5)
@@ -101,6 +103,8 @@ class VisualizeFilter:
         self.ftype = self.filter_types[n]
       else:
         item.set_weight('normal')
+    pylab.draw()
+    self.update_design()
     pylab.draw()
 
   def on_pick(self, event):
