@@ -1,12 +1,14 @@
 NeuraPy
--------
-is a collection of python modules useful for analyzing data obtained in neurophysiological experiments.
+=======
+NeuraPy is a collection of python modules useful for analyzing data obtained in neurophysiological experiments.
 
-* cerebus - a module for loading .nev and .nsx files saved by BlackRock's [Cerebus][cb] software
-* lablib - a module for loading [lablib][lablib] data files
-* monkeylogic - a module for loading data files saved by the [MonkeyLogic][ml] program
-* neuralynx - a module for reading files produced by [neuralynx][nl] boxes
-* neuroexplorer - reads/writes .nex files for the neuroexplorer/offline sorter programs
+* cerebus - a package for loading .nev and .nsx files saved by BlackRock's [Cerebus][cb] software
+* lablib - a package for loading [lablib][lablib] data files
+* monkeylogic - a package for loading data files saved by the [MonkeyLogic][ml] program
+* neuralynx - a package for reading files produced by [neuralynx][nl] boxes
+* neuroexplorer - a package for reading/writing .nex files for the neuroexplorer/offline sorter programs
+* signal - a package for processing sampled continuous signals (filtering etc.)
+* nframe - a package (framework) using Pandas DataFrame objects for processing neural data in concert with epoch based behavioral data
 
 [lablib]: http://maunsell.med.harvard.edu/software.html
 [ml]: http://www.monkeylogic.net/
@@ -31,6 +33,7 @@ Typically, from your script, you will import one of the sub-modules e.g
 
 For module specific instructions look at the readme files in each module's directory and
 look at the documentation in the source
+
 
 Licence
 -------
