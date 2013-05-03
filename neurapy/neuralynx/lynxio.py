@@ -87,12 +87,10 @@ def read_csc(fin, assume_same_fs=True):
     for n in xrange(1,len(sections)):
       #Now figure out how many zeros we have to pad to get the right length
       Npad = int((ts_us[idx[n]] - ts_us[0])*1e-6*Fs - cum_N)
-      print Npad
       padded.append(pylab.zeros(Npad))
       padded.append(sections[n])
       cum_N += Npad + sections[n].size
     trace = pylab.concatenate(padded) #From this packet to the packet before the gap
-    print cum_N, trace.size
 
   return {'header': hdr, 'packets': data, 'Fs': Fs, 'trace': trace, 't0': ts_us[0]}
 
