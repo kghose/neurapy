@@ -64,7 +64,7 @@ def read_csc(fin, assume_same_fs=True):
     trace = samp.ravel()
     Fs = (data['Ns'][:-1]/(dt_us*1e-6)).mean()
   else: #We have some padding to do.
-    logger.debug('Gaps in record, padding (packet duration = {:d} ms)'.format(int(packet_duration*1e-3)))
+    logger.debug('Gaps in record, padding')
     #Our first task is to find all the contiguous sections of data
     idx += 1 #Shifting indexes to point at the packets that come after a gap
     idx = pylab.insert(idx, 0, 0) #Now idx contains the indexes of every packet that starts a contiguous section
@@ -79,20 +79,20 @@ def read_csc(fin, assume_same_fs=True):
       if n1-n0 > 1:#We need more than one packet in a section to get an estimate
         estimFs_sum += (Ns[n0:n1-1]/(dt_us[n0:n1-1]*1e-6)).sum()
         N_samps += n1-1-n0
-    #sections.append(samp[idx[-1]:]) #Don't forget the last section
-    Fs = estimFs_sum / float(N_samps)
-    print Fs
-    packet_duration_us = 512*(1./Fs)*1e6
 
+    Fs = estimFs_sum / float(N_samps)
     #Now pad the data appropriately
     padded = [sections[0]]
     cum_N = sections[0].size
     for n in xrange(1,len(sections)):
       #Now figure out how many zeros we have to pad to get the right length
-      Npad = ts_us[idx[n]]*1e-6*Fs - cum_N
+      Npad = int((ts_us[idx[n]] - ts_us[0])*1e-6*Fs - cum_N)
+      print Npad
       padded.append(pylab.zeros(Npad))
       padded.append(sections[n])
+      cum_N += Npad + sections[n].size
     trace = pylab.concatenate(padded) #From this packet to the packet before the gap
+    print cum_N, trace.size
 
   return {'header': hdr, 'packets': data, 'Fs': Fs, 'trace': trace, 't0': ts_us[0]}
 
