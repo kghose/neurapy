@@ -49,30 +49,52 @@ def read_csc(fin, assume_same_fs=True):
       logger.warning('Fs is not fixed across trace, not packing packets together')
       assume_same_fs = False
 
-  if assume_same_fs:
-    samp = data['samp']
-    Fs = data['Fs'][0]
-    Ts = 1./Fs #Sample time
-    packet_duration = 512*Ts*1e6
-    ts = data['timestamp']
-    dt = pylab.diff(ts).astype('f')
-    idx = pylab.find(dt > packet_duration) #This will find any instances where we paused the recording
-    if idx.size == 0:#No padding needed
-      trace = samp.ravel()
-    else: #We have some padding to do.
-      logger.debug('Gaps in record, padding (packet duration = {:d} ms)'.format(int(packet_duration*1e-3)))
-      idx += 1 #Shifting indexes to point at the packets that come after a gap
-      idx = pylab.append(idx,data.size)#The end part
-      trace = samp[:idx[0]].ravel()#Start
-      for n in xrange(idx.size-1): #Need to pad as many times as there are gaps
-        deltaT = ts[idx[n]] - ts[idx[n]-1]
-        logger.debug('Gaps after packet {:d} ({:d} ms) : {:d} ms'.format(idx[n]-1, int(ts[idx[n]-1]), int(deltaT*1e-3)))
-        Npad = int(Fs*(deltaT - packet_duration)*1e-6)
-        pad = pylab.zeros(Npad)
-        logger.debug('Padding {:d} zeros at sample {:d}'.format(Npad, trace.size))
-        trace = pylab.concatenate((trace,pad,samp[idx[n]:idx[n+1]].ravel())) #From this packet to the packet before the gap
+  if not assume_same_fs: return {'header': hdr, 'packets': data}
 
-  return {'header': hdr, 'packets': data, 'Fs': Fs, 'trace': trace, 't0': data['timestamp'][0]}
+  packet_duration_us = 512*(1./data['Fs'][0])*1e6
+  #For the version we are dealing with, Neuralynx packets are always 512
+  #This is actually a very poor estimate if the sampling freq is low, since it rounds to nearest Hz
+  #So we'll not rely on this but come up with our own estimate
+
+  samp = data['samp']
+  ts_us = data['timestamp']
+  dt_us = pylab.diff(ts_us).astype('f')
+  idx = pylab.find(dt_us > packet_duration_us) #This will find any instances where we paused the recording
+  if idx.size == 0:#No padding needed
+    trace = samp.ravel()
+    Fs = (data['Ns'][:-1]/(dt_us*1e-6)).mean()
+  else: #We have some padding to do.
+    logger.debug('Gaps in record, padding (packet duration = {:d} ms)'.format(int(packet_duration*1e-3)))
+    #Our first task is to find all the contiguous sections of data
+    idx += 1 #Shifting indexes to point at the packets that come after a gap
+    idx = pylab.insert(idx, 0, 0) #Now idx contains the indexes of every packet that starts a contiguous section
+    idx = pylab.append(idx,ts_us.size) #And the index of the last packet
+    Ns = data['Ns']
+    estimFs_sum = 0
+    N_samps = 0
+    sections = []
+    for n in xrange(idx.size-1): #collect all the sections
+      n0 = idx[n]; n1=idx[n+1]
+      sections.append(samp[n0:n1].ravel())
+      if n1-n0 > 1:#We need more than one packet in a section to get an estimate
+        estimFs_sum += (Ns[n0:n1-1]/(dt_us[n0:n1-1]*1e-6)).sum()
+        N_samps += n1-1-n0
+    #sections.append(samp[idx[-1]:]) #Don't forget the last section
+    Fs = estimFs_sum / float(N_samps)
+    print Fs
+    packet_duration_us = 512*(1./Fs)*1e6
+
+    #Now pad the data appropriately
+    padded = [sections[0]]
+    cum_N = sections[0].size
+    for n in xrange(1,len(sections)):
+      #Now figure out how many zeros we have to pad to get the right length
+      Npad = ts_us[idx[n]]*1e-6*Fs - cum_N
+      padded.append(pylab.zeros(Npad))
+      padded.append(sections[n])
+    trace = pylab.concatenate(padded) #From this packet to the packet before the gap
+
+  return {'header': hdr, 'packets': data, 'Fs': Fs, 'trace': trace, 't0': ts_us[0]}
 
 
 def read_nev(fin, parse_event_string=False):
