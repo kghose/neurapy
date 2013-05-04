@@ -8,3 +8,5 @@ spikes - contains various functions to analyse point data such as spikes
 continuous - functions to process and analyze continuous data, such as LFPs and other raw traces.
 
 stats.py - contains some elementary statistical functions:
+
+nframe - a framework for handling neural data linked to epoch based behavioral experiments
