@@ -6,7 +6,7 @@ Kaushik Ghose (kaushik.ghose@gmail.com)
 
 """
 from struct import unpack as upk, calcsize as csize
-import pylab, logging, argparse
+import pylab, logging
 logger = logging.getLogger(__name__)
 
 def unpack(fmt,f):
@@ -341,13 +341,3 @@ def read_bhv(fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'):
 
   logger.error('Some issue with loading file')
   return None
-
-if __name__ == "__main__":
-  logger.setLevel(logging.DEBUG)
-  logger.addHandler(logging.StreamHandler())
-
-  parser = argparse.ArgumentParser()
-  parser.add_argument('-f','--file')
-  args = parser.parse_args()
-  #fname = '../SampleData/WMHU-MJT-06-04-2012.bhv'
-  bhv = read_bhv(fname = args.file)
