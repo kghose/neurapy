@@ -42,7 +42,7 @@ def epoch_spike_count(df, nnames=[], epochs=[], bin_edges=[]):
       this_ts = ts - df[epoch]
       sc = pylab.array([[pylab.nan]*(be.size-1)]*len(df.index))
       #If a row is null then it means that there is no spike data for that trial. This does not mean the neuron did not spike during that period, it means that we did not hold the neuron during that period
-      notnulls = pd.notnull(ts)
+      notnulls = pd.notnull(ts) & pd.notnull(df[epoch])
       for n in xrange(len(df.index)):
         if notnulls[n]:
           for m in xrange(be.size-1):
