@@ -103,7 +103,7 @@ def read_header(bhv, fin):
     tsize, = unpack('H', fin)
     tsqrt = int(tsize ** 0.5)
     et['tdata T'] = [[unpack('d', fin)[0] for n in xrange(tsqrt)] for m in xrange(tsqrt)]
-    et['tdate Tinv'] = [[unpack('d', fin)[0] for n in xrange(tsqrt)] for m in xrange(tsqrt)]
+    et['tdata Tinv'] = [[unpack('d', fin)[0] for n in xrange(tsqrt)] for m in xrange(tsqrt)]
   bhv['EyeSignalCalibrationMethod'] = escm
   bhv['EyeTransform'] = et
 
@@ -115,7 +115,7 @@ def read_header(bhv, fin):
     tsize, = unpack('H', fin)
     tsqrt = int(tsize ** 0.5)
     et['tdata T'] = [[unpack('d', fin)[0] for n in xrange(tsqrt)] for m in xrange(tsqrt)]
-    et['tdate Tinv'] = [[unpack('d', fin)[0] for n in xrange(tsqrt)] for m in xrange(tsqrt)]
+    et['tdata Tinv'] = [[unpack('d', fin)[0] for n in xrange(tsqrt)] for m in xrange(tsqrt)]
   bhv['JoystickCalibrationMethod'] = jcm
   bhv['JoyTransform'] = et
 
