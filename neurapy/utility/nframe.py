@@ -37,17 +37,20 @@ def epoch_spike_count(df, nnames=[], epochs=[], bin_edges=[]):
   sc_df = []
   for nrn in nnames:
     logger.debug('Processing {:s}'.format(nrn))
-    ts = df[nrn]#We expect this column to contain spike timestamps
-    for epoch,be in zip(epochs, bin_edges):
-      this_ts = ts - df[epoch]
-      sc = pylab.array([[pylab.nan]*(be.size-1)]*len(df.index))
-      #If a row is null then it means that there is no spike data for that trial. This does not mean the neuron did not spike during that period, it means that we did not hold the neuron during that period
-      notnulls = pd.notnull(ts) & pd.notnull(df[epoch])
-      for n in xrange(len(df.index)):
-        if notnulls[n]:
-          for m in xrange(be.size-1):
-            sc[n,m] = pylab.find((be[m] <= this_ts[n]) & (this_ts[n] < be[m+1])).size
-      col_tuples = [(nrn, epoch, n) for n in xrange(be.size-1)]
-      col_index = pd.MultiIndex.from_tuples(col_tuples, names=['neuron', 'epoch', 'bin'])
-      sc_df.append(pd.DataFrame(sc, columns=col_index, index=df.index))
+    if nrn in df.columns:
+      ts = df[nrn]#We expect this column to contain spike timestamps
+      for epoch,be in zip(epochs, bin_edges):
+        this_ts = ts - df[epoch]
+        sc = pylab.array([[pylab.nan]*(be.size-1)]*len(df.index))
+        #If a row is null then it means that there is no spike data for that trial. This does not mean the neuron did not spike during that period, it means that we did not hold the neuron during that period
+        notnulls = pd.notnull(ts) & pd.notnull(df[epoch])
+        for n in xrange(len(df.index)):
+          if notnulls[n]:
+            for m in xrange(be.size-1):
+              sc[n,m] = pylab.find((be[m] <= this_ts[n]) & (this_ts[n] < be[m+1])).size
+        col_tuples = [(nrn, epoch, n) for n in xrange(be.size-1)]
+        col_index = pd.MultiIndex.from_tuples(col_tuples, names=['neuron', 'epoch', 'bin'])
+        sc_df.append(pd.DataFrame(sc, columns=col_index, index=df.index))
+    else:
+      logger.error('No such neuron in file {:s}'.format(nrn))
   return pd.concat(sc_df,axis=1)
