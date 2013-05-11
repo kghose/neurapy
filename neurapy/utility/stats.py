@@ -7,6 +7,57 @@ this_dir, this_filename = os.path.split(__file__) #Needed for the lookup table
 ci_table_fname = os.path.join(this_dir, "ci_table.pkl")
 ci_table = cPickle.load(open(ci_table_fname,'rb'))
 
+def auroc(x1, x2, N=40):
+  """Area under the ROC curve. Given scalar data from two groups (x1,x2) what is the probability that an ideal
+  observer will be able to correctly classify the groups?
+
+  >>> x1 = pylab.zeros(10)
+  >>> x2 = pylab.zeros(10) + 1
+  >>> print auroc(x1,x2)
+  1.0
+  >>>
+  >>> x1 = pylab.zeros(10)
+  >>> x2 = pylab.zeros(10) - 1
+  >>> print auroc(x1,x2)
+  1.0
+  >>> x1 = pylab.randn(10000)
+  >>> x2 = pylab.randn(10000)
+  >>> print round(auroc(x1,x2),2)
+  0.5
+  >>> x1 = pylab.randn(100000)+1
+  >>> x2 = pylab.randn(100000)
+  >>> print round(auroc(x1,x2),2)
+  0.76
+  >>> x1 = pylab.randn(100000)-1.5
+  >>> x2 = pylab.randn(100000)
+  >>> print round(auroc(x1,x2),2)
+  0.85
+  """
+  n1 = float(x1.size)
+  n2 = float(x2.size)
+  av1 = x1.mean()
+  av2 = x2.mean()
+  if av1 > av2:
+    FA = 1
+    H = 0
+  else:
+    FA = 0
+    H = 1
+
+  st = min(x1.min(), x2.min())
+  nd = max(x1.max(), x2.max())
+  ra = nd - st
+  st -= .01*ra
+  nd += .01*ra
+  cri = pylab.linspace(nd,st,N)
+  roc = [pylab.zeros(N), pylab.zeros(N)]
+  for n in xrange(N):
+    roc[H][n] = pylab.find(x2 > cri[n]).size/n2
+    roc[FA][n] = pylab.find(x1 > cri[n]).size/n1
+
+  return pylab.trapz(roc[1], roc[0])
+
+
 def boot_p(pc, nsamp, bootstraps=2000):
   """Given a probability value p and sample size n, return us bootstraps
   number of probability values obtained by random resampling based on p."""
@@ -30,6 +81,8 @@ def bin_confint(pc, nsamp, ci = .05, bootstraps=2000):
   Output:
     3xN array - first row is median (should be approximately same as pc)
                 last two rows are lower and upper ci as expected by pylab.errorbar
+
+
   """
   def one_ci(pc, nsamp, ci, bootstraps):
     booted_p = boot_p(pc, nsamp, bootstraps)
@@ -93,7 +146,7 @@ def compute_section(inputs):
 
 def generate_ci_table():
   """Generate the ci table that bin_confint uses."""
-
+  from multiprocessing import Pool
   pc = pylab.linspace(start=0,stop=1,num=20)
   nsamp = 2**pylab.arange(1,15)
   ci = pylab.array([0.01, 0.05, 0.1])
@@ -101,7 +154,6 @@ def generate_ci_table():
   values_lo = pylab.zeros(pc.size*nsamp.size*ci.size)
   values_high = pylab.zeros(pc.size*nsamp.size*ci.size)
 
-  from multiprocessing import Pool
   inputs = []
   for i in xrange(ci.size):
     for j in xrange(nsamp.size):
@@ -202,20 +254,53 @@ def boot_curvefit(x,y,fit, p0, ci = .05, bootstraps=2000):
 
   return p_ci, booted_p
 
-def binary_phi(b1,b2):
-  """Given two binary variables b1 and b2 return the ."""
-  n00 = pylab.find(b1==b2==0).size
-  n01 = pylab.find(b1==0 & b2==1).size
-  n10 = pylab.find(b1==1 & b2==0).size
-  n11 = pylab.find(b1==b2==1).size
 
-  n1s = n10+n11
-  n0s = n00+n01
-  ns0 = n00+n10
-  ns1 = n01+n11
 
-  return (n11*n00 - n10*n01)/(n1s*n0s*ns0*ns1)**.5
+def mutual_information(x,y, bins=11):
+  """Given two arrays x and y of equal length, return their mutual information in bits
+
+  >>> N = 10000
+  >>> xi = pylab.randn(N)
+  >>> xi[pylab.find(xi>0)] = 1
+  >>> xi[pylab.find(xi<=0)] = 0
+  >>> yi = xi
+  >>> print round(mutual_information(xi, yi, 1000),2) #One bit of info
+  1.0
+
+  >>> N = 10000
+  >>> xi = pylab.uniform(size=N)
+  >>> yi = pylab.floor(xi*8)
+  >>> print round(mutual_information(xi, yi, 1000),2) #Three bits of info
+  3.0
+
+  >>> N = 100000
+  >>> xi = pylab.randn(N)
+  >>> yi = pylab.randn(N)
+  >>> print round(mutual_information(xi, yi),2) #Should be zero given enough data and not too sparse binning
+  0.0
+  """
+  Hxy, xe, ye = pylab.histogram2d(x,y,bins=bins)
+  Hx = Hxy.sum(axis=1)
+  Hy = Hxy.sum(axis=0)
+
+  Pxy = Hxy/float(x.size)
+  Px = Hx/float(x.size)
+  Py = Hy/float(x.size)
+
+  pxy = Pxy.ravel()
+  px = Px.repeat(Py.size)
+  py = pylab.tile(Py, Px.size)
+
+  idx = pylab.find((pxy > 0) & (px > 0) & (py > 0))
+  mi = (pxy[idx]*pylab.log2(pxy[idx]/(px[idx]*py[idx]))).sum()
+
+  return mi
 
 if __name__ == '__main__':
+  import sys
   logging.basicConfig(level=logging.DEBUG)
-  data = generate_ci_table()
+  if sys.argv[1] == '-c':
+    data = generate_ci_table()
+
+  import doctest
+  doctest.testmod()
