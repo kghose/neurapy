@@ -7,55 +7,53 @@ this_dir, this_filename = os.path.split(__file__) #Needed for the lookup table
 ci_table_fname = os.path.join(this_dir, "ci_table.pkl")
 ci_table = cPickle.load(open(ci_table_fname,'rb'))
 
-def auroc(x1, x2, N=40):
+def auroc(x1, x2, N=40, limits=None):
   """Area under the ROC curve. Given scalar data from two groups (x1,x2) what is the probability that an ideal
   observer will be able to correctly classify the groups?
 
   >>> x1 = pylab.zeros(10)
   >>> x2 = pylab.zeros(10) + 1
-  >>> print auroc(x1,x2)
+  >>> print auroc(x1,x2)[0]
   1.0
   >>>
   >>> x1 = pylab.zeros(10)
   >>> x2 = pylab.zeros(10) - 1
-  >>> print auroc(x1,x2)
-  1.0
+  >>> print auroc(x1,x2)[0]
+  0.0
+  >>> pylab.seed(0)
   >>> x1 = pylab.randn(10000)
   >>> x2 = pylab.randn(10000)
-  >>> print round(auroc(x1,x2),2)
-  0.5
+  >>> print round(auroc(x1,x2)[0],3)
+  0.509
+  >>> pylab.seed(0)
   >>> x1 = pylab.randn(100000)+1
   >>> x2 = pylab.randn(100000)
-  >>> print round(auroc(x1,x2),2)
-  0.76
+  >>> print round(auroc(x1,x2)[0],3)
+  0.241
+  >>> pylab.seed(5)
   >>> x1 = pylab.randn(100000)-1.5
   >>> x2 = pylab.randn(100000)
-  >>> print round(auroc(x1,x2),2)
-  0.85
+  >>> print round(auroc(x1,x2)[0],3)
+  0.853
   """
   n1 = float(x1.size)
   n2 = float(x2.size)
-  av1 = x1.mean()
-  av2 = x2.mean()
-  if av1 > av2:
-    FA = 1
-    H = 0
+  if limits is None:
+    st = min(x1.min(), x2.min())
+    nd = max(x1.max(), x2.max())
+    ra = nd - st
+    st -= .01*ra
+    nd += .01*ra
   else:
-    FA = 0
-    H = 1
-
-  st = min(x1.min(), x2.min())
-  nd = max(x1.max(), x2.max())
-  ra = nd - st
-  st -= .01*ra
-  nd += .01*ra
+    st = limits[0]
+    nd = limits[1]
   cri = pylab.linspace(nd,st,N)
   roc = [pylab.zeros(N), pylab.zeros(N)]
   for n in xrange(N):
-    roc[H][n] = pylab.find(x2 > cri[n]).size/n2
-    roc[FA][n] = pylab.find(x1 > cri[n]).size/n1
+    roc[1][n] = pylab.find(x2 > cri[n]).size/n2
+    roc[0][n] = pylab.find(x1 > cri[n]).size/n1
 
-  return pylab.trapz(roc[1], roc[0])
+  return pylab.trapz(roc[1], roc[0]), roc
 
 
 def boot_p(pc, nsamp, bootstraps=2000):
@@ -299,8 +297,9 @@ def mutual_information(x,y, bins=11):
 if __name__ == '__main__':
   import sys
   logging.basicConfig(level=logging.DEBUG)
-  if sys.argv[1] == '-c':
-    data = generate_ci_table()
+  if len(sys.argv) > 1:
+    if sys.argv[1] == '-c':
+      data = generate_ci_table()
 
   import doctest
   doctest.testmod()
