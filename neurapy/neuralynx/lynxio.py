@@ -133,7 +133,7 @@ def read_nev(fin, parse_event_string=False):
     ('eventstring', '128c')
   ])
   data = pylab.fromfile(fin, dtype=nev_packet, count=-1)
-  logger.info('{:d} events'.format(data['timestamp'].size))
+  logger.debug('{:d} events'.format(data['timestamp'].size))
   if parse_event_string:
     logging.info('Packaging the event strings. This makes things slower.')
     # Makes things slow. Often this field is not needed
