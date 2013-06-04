@@ -2,7 +2,8 @@
 nframe
 
 In behaving neurophysiological studies we generally present the subject with trials where several events occur, and we
-are often interested in neural responses that occur within some time window relative to those events.
+are often interested in neural responses that occur within some time window relative to those events. We wish to group
+trials based on some trial parameter and compare aggregate neural responses within and across those grouped trials.
 
 nframe is a framework for processing such data, built around the pandas DataFrame object. Pandas was chosen for
 * Convenient column and row indexing, including hierarchical indexes and tab completion in ipython (makes it easy to do
@@ -10,15 +11,18 @@ interactive data exploration)
 * Convenient saving to disk
 * Easy interoperability with numpy
 
-nframe simply encourages you to organize your data in two dimensional tables
+nframe simply encourages you to organize your data in two dimensional tables and provides a bunch of filters that
+allow you to process this organized data.
+
+Basic behavioral and trial data is stored in a session dataframe.
 
 Session dataframe
----------------
+-----------------
 
 Each row is a trial and each column corresponds to some trial parameter or event time.
 
-In addition, when you have neural data, the spike times corresponding to each trial are stored as a numpy array under
-columns corresponding to the neuron identity, eg. n1, n2 etc.
+In addition, when you have neural data, the spike times/lfp trace corresponding to each trial are stored as a numpy array
+under columns corresponding to the neuron identity, eg. n1, n2 etc.
 
 e.g.
 index  | trial_no | correct | stimulus | on_time | off_time | n1              |n2           |
@@ -32,23 +36,14 @@ Here
 - n1,n2 are neural data.
   - These can be spike times or continuous data like LFPs
   - If data do not exist for a trial (the session can run longer than there is neural data) then we should fill with a Null
-
+  - We section the data according to some rule, e.g. the data start at on_time and end at off_time
 
 In general it is advantageous to name the columns starting with an alphabet since that permits tab completion in Ipython
 
 """
-import pandas as pd, pylab, multiprocessing as mp
+import pandas as pd, pylab
 import logging
 logger = logging.getLogger(__name__)
-
-def valid_neurons(df, nnames):
-  """Only pass neurons that exist in the dataframe."""
-  for nrn in nnames:
-    if nrn not in df.columns.get_level_values('neuron'):
-      logger.error('No such neuron in file {:s}'.format(nrn))
-      continue
-    else:
-      yield nrn
 
 def epoch_spike_count(df, nnames=[], epochs=[], epoch_names=[], bin_edges=[]):
   """
@@ -67,11 +62,10 @@ def epoch_spike_count(df, nnames=[], epochs=[], epoch_names=[], bin_edges=[]):
     DataFrame with hierarchical column names.
       The column names are (neuronname, epoch, 0) (neuronname, epoch, 1) etc.
 
-    index  | n1                          |n2                             |
-           | e1           |e2            |e1              |e2            |
-           | 0 | 1 ....   | 0 | 1 ...    | 0 | 1 ....                    |
+    neuron  | n1                          |n2                             |
+    epoch   | e1           |e2            |e1              |e2            |
+    bin     | 0 | 1 ....   | 0 | 1 ...    | 0 | 1 ....                    |
     ----------------------------------------------------------------------
-
 
     This structure simply makes it more convenient to handle the data for epoched based analysis, since we now have the spikes
     organized as 2D arrays, each element of which is an integer [0,1,2...] indicating how many spikes are present in that bin
@@ -79,15 +73,20 @@ def epoch_spike_count(df, nnames=[], epochs=[], epoch_names=[], bin_edges=[]):
 
     It also makes accessing epoch based data very convenient, e.g
 
-    df.n1.e2  will return us a n x m array (n trials x m time slices). The peri-event spike count plot is simply
+    df.n1.e2  will return us a n x m array (n trials x m time slices) corresponding to the response of neuron n1 during
+    epoch e1. The peri-event spike count plot is simply
     pylab.plot(df.n1.e2.sum())
-
-
-    run loadsess.py -f='2013-03-11_15-59-25'
-    sc_df = nframe.epoch_spike_count(trials, nnames=['n130311s3c1u1'], epochs=['fixstart','s1on'], bin_edges=[pylab.arange(-.2,.9,.01)]*2)
-    pylab.plot(sc_df.n130311s3c1u1.fixstart[trials.trial_type==1].mean())
-    pylab.plot(sc_df.n130311s3c1u1.fixstart[trials.trial_type==2].mean())
   """
+  def valid_neurons(df, names):
+    """The session data frame is differently structured, with no multiindex columns, so we have to treat this is a
+    little different."""
+    for nrn in nnames:
+      if nrn not in df.columns.unique():
+        logger.error('No such neuron ({:s}) in file'.format(nrn))
+        continue
+      else:
+        yield nrn
+
   sc_df = []
   for nrn in valid_neurons(df, nnames):
     logger.debug('Processing {:s}'.format(nrn))
@@ -105,3 +104,30 @@ def epoch_spike_count(df, nnames=[], epochs=[], epoch_names=[], bin_edges=[]):
       col_index = pd.MultiIndex.from_tuples(col_tuples, names=['neuron', 'epoch', 'bin'])
       sc_df.append(pd.DataFrame(sc, columns=col_index, index=df.index))
   return pd.concat(sc_df,axis=1)
+
+def remove_baseline(df, baseline_epoch_name):
+  """
+  Pick an epoch as the baseline condition. Get out a nframe with the mean of the baseline subtracted from all the other
+  epochs for that neuron
+
+  Inputs:
+    df                   - data frame obtained from epoch_spike_count
+    nnames               - names of the neurons (list).
+    baseline_epoch_name  - the epoch we want to use as a baseline
+
+  Outputs:
+    new_df               - identical format, but with the baseline for each neuron subtracted out
+  """
+  new_df = df.copy()
+  epochs = df.columns.get_level_values('epoch').unique()
+  if baseline_epoch_name not in epochs:
+    logger.error('requested baseline epoch ({:s}) does not exist'.format(baseline_epoch_name))
+    return new_df
+  for nrn in df.columns.get_level_values('neuron').unique():
+    new_df[nrn] -= df[nrn][baseline_epoch_name].mean().mean()
+  return  new_df
+
+def epoch_window_average(df, nname, epochs=[], epoch_names=[], bin_edges=[]):
+  """
+  Pass in a spike count data frame
+  """

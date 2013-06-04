@@ -42,6 +42,8 @@ def auroc(x1, x2, N=40, limits=None):
     st = min(x1.min(), x2.min())
     nd = max(x1.max(), x2.max())
     ra = nd - st
+    if ra == 0:
+      ra = .1 #this happens if all our readings are identical (we should actually get cp = 0.5 for this
     st -= .01*ra
     nd += .01*ra
   else:
