@@ -214,7 +214,7 @@ def read_trials(bhv, fin):
     if fv >=2.05:
       cr[trl], = unpack('H', fin)
       if fv >= 2.72:
-        mcr[trl], = unpack('H', fin) if cr[trl]>0 else 0
+        mcr[trl] = unpack('H', fin)[0] if cr[trl]>0 else 0
 
     ncodes[trl], = unpack('H', fin)
     coden[trl] = unpack('H'*ncodes[trl], fin)
