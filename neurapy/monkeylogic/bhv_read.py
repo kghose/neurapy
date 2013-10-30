@@ -80,9 +80,10 @@ def read_header(bhv, fin):
   bhv['BlockSelectFunction'] = bsf
   bhv['CondSelectFunction'] = csf
   if fv>2.0:
-    vrr, vbp = unpack('=dH', fin)
-    bhv['VideoRefreshRate'] = vrr
-    bhv['VideoBufferPages'] = vbp
+    bhv['VideoRefreshRate'] = unpack('d', fin)[0]
+    if fv>3.0:
+      bhv['ActualVideoRefreshRate'] = unpack('d', fin)[0]
+    bhv['VideoBufferPages'] = unpack('H', fin)[0]
 
   sxr, syr, vd, ppd = unpack('=HHdd', fin)
   bhv['ScreenXresolution'] = sxr
@@ -213,11 +214,14 @@ def read_trials(bhv, fin):
     if fv >=2.05:
       cr[trl], = unpack('H', fin)
       if fv >= 2.72:
-        mcr[trl], = unpack('H', fin)
+        mcr[trl], = unpack('H', fin) if cr[trl]>0 else 0
 
     ncodes[trl], = unpack('H', fin)
     coden[trl] = unpack('H'*ncodes[trl], fin)
-    codet[trl] = unpack('H'*ncodes[trl], fin)
+    if fv>=3.0:
+      codet[trl] = unpack('I'*ncodes[trl], fin)
+    else:
+      codet[trl] = unpack('H'*ncodes[trl], fin)
 
     if fv > 1.5:
       if fv > 1.6:
